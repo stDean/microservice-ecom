@@ -441,6 +441,7 @@ const authenticateToken = (
     logger.error("Authentication failed: Invalid token", req.requestId, error, {
       path: req.path,
     });
+
     return res.status(StatusCodes.FORBIDDEN).json({
       error: "Invalid or expired token",
       correlationId: req.requestId,
@@ -1072,3 +1073,18 @@ process.on("unhandledRejection", (reason: any, promise: Promise<any>) => {
   logger.error("Unhandled Promise Rejection", undefined, reason);
   process.exit(1);
 });
+
+export {
+  app,
+  validateRequest,
+  validateAgainstSchema,
+  checkCircuitBreaker,
+  recordCircuitBreakerSuccess,
+  recordCircuitBreakerFailure,
+  requestIdMiddleware,
+  authenticateToken,
+  SERVICES,
+  SERVICE_TIMEOUTS,
+};
+
+export default app;
