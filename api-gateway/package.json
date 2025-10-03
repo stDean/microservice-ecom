@@ -2,16 +2,22 @@
   "name": "api-gateway",
   "version": "1.0.0",
   "main": "index.js",
+  "description": "API Gateway for Microservices Architecture",
   "scripts": {
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
+    "docker:dev:logs": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f",
+    "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build",
+    "docker:down": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v",
+    "docker:down:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml down -v",
+    "docker:build": "docker build -t api-gateway ."
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
   "dependencies": {
     "compression": "^1.8.1",
     "cors": "^2.8.5",

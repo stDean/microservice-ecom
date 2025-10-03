@@ -68,6 +68,7 @@ interface HealthResponse {
   timestamp: string;
   services: string[];
   uptime: number;
+  serviceStatus?: { [key: string]: string };
 }
 
 /**
@@ -99,6 +100,17 @@ interface ValidationRules {
   };
 }
 
+/**
+ * @interface CircuitBreakerState
+ * @notice Circuit breaker state for microservices
+ * @dev Implements the circuit breaker pattern for fault tolerance
+ */
+interface CircuitBreakerState {
+  failures: number;
+  lastFailure: number;
+  state: "CLOSED" | "OPEN" | "HALF_OPEN";
+}
+
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
@@ -123,6 +135,130 @@ const SERVICES: ServiceConfig = {
  */
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-default-jwt-secret-change-in-production";
+
+/**
+ * @constant SERVICE_TIMEOUTS
+ * @notice Service-specific timeout configuration
+ * @dev Different services may have different response time expectations
+ */
+const SERVICE_TIMEOUTS: { [key: string]: number } = {
+  auth: 10000, // 10 seconds
+  users: 15000, // 15 seconds
+  products: 20000, // 20 seconds
+};
+
+/**
+ * @constant circuitBreakers
+ * @notice Circuit breaker state storage
+ * @dev Tracks failure states for each microservice
+ */
+const circuitBreakers: { [service: string]: CircuitBreakerState } = {};
+
+// =============================================================================
+// ENVIRONMENT VALIDATION
+// =============================================================================
+
+/**
+ * @function validateEnvironment
+ * @notice Validates required environment variables
+ * @dev Throws error if required variables are missing
+ */
+const validateEnvironment = () => {
+  const required = ["JWT_SECRET"];
+  if (process.env.NODE_ENV === "production") {
+    required.push("AUTH_SERVICE_URL");
+  }
+
+  const missing = required.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`
+    );
+  }
+
+  logger.info("Environment validation passed", undefined, {
+    nodeEnv: process.env.NODE_ENV,
+    services: Object.keys(SERVICES),
+  });
+};
+
+// =============================================================================
+// CIRCUIT BREAKER IMPLEMENTATION
+// =============================================================================
+
+/**
+ * @function checkCircuitBreaker
+ * @notice Circuit breaker pattern implementation
+ * @dev Prevents cascading failures when services are down
+ * @param serviceName - Name of the microservice
+ * @returns boolean indicating if request should proceed
+ */
+const checkCircuitBreaker = (serviceName: string): boolean => {
+  const breaker = circuitBreakers[serviceName] || {
+    failures: 0,
+    lastFailure: 0,
+    state: "CLOSED" as const,
+  };
+
+  if (breaker.state === "OPEN") {
+    // Check if we should try again (30 second cooldown)
+    if (Date.now() - breaker.lastFailure > 30000) {
+      breaker.state = "HALF_OPEN";
+      circuitBreakers[serviceName] = breaker;
+      logger.info(
+        `Circuit breaker for ${serviceName} moved to HALF_OPEN`,
+        undefined,
+        { service: serviceName }
+      );
+      return true;
+    }
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * @function recordCircuitBreakerSuccess
+ * @notice Records successful request to reset circuit breaker
+ * @param serviceName - Name of the microservice
+ */
+const recordCircuitBreakerSuccess = (serviceName: string) => {
+  if (circuitBreakers[serviceName]) {
+    circuitBreakers[serviceName] = {
+      failures: 0,
+      lastFailure: 0,
+      state: "CLOSED",
+    };
+  }
+};
+
+/**
+ * @function recordCircuitBreakerFailure
+ * @notice Records failed request to update circuit breaker state
+ * @param serviceName - Name of the microservice
+ */
+const recordCircuitBreakerFailure = (serviceName: string) => {
+  const breaker = circuitBreakers[serviceName] || {
+    failures: 0,
+    lastFailure: 0,
+    state: "CLOSED" as const,
+  };
+
+  breaker.failures++;
+  breaker.lastFailure = Date.now();
+
+  // Open circuit after 5 consecutive failures
+  if (breaker.failures >= 5) {
+    breaker.state = "OPEN";
+    logger.warn(`Circuit breaker opened for ${serviceName}`, undefined, {
+      service: serviceName,
+      failures: breaker.failures,
+    });
+  }
+
+  circuitBreakers[serviceName] = breaker;
+};
 
 // =============================================================================
 // MIDDLEWARE: REQUEST ID TRACKING
@@ -264,12 +400,13 @@ const authenticateToken = (
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
 
-  // Skip authentication for public routes - ADD FAVICON HERE
+  // Skip authentication for public routes
   const publicRoutes = [
     "/health",
+    "/health/detailed",
     "/favicon.ico",
-    "/auth/login",
-    "/auth/register",
+    "/api/v1/auth/login",
+    "/api/v1/auth/register",
   ];
 
   const isPublicRoute =
@@ -326,7 +463,7 @@ const authenticateToken = (
  * - params: Route parameters validation
  */
 const validationRules: ValidationRules = {
-  "/users": {
+  "/api/v1/users": {
     POST: {
       body: {
         type: "object",
@@ -339,7 +476,7 @@ const validationRules: ValidationRules = {
       },
     },
   },
-  "/products": {
+  "/api/v1/products": {
     POST: {
       body: {
         type: "object",
@@ -486,14 +623,51 @@ const validateAgainstSchema = (
 };
 
 // =============================================================================
+// RATE LIMITING CONFIGURATION
+// =============================================================================
+
+/**
+ * @function createRateLimit
+ * @notice Creates configured rate limit middleware
+ * @dev Different endpoints can have different rate limits
+ * @param windowMs - Time window in milliseconds
+ * @param max - Maximum number of requests per window
+ * @returns Configured rate limit middleware
+ */
+const createRateLimit = (windowMs: number, max: number) =>
+  rateLimit({
+    windowMs,
+    max,
+    message: {
+      error: "Too many requests, please try again later.",
+      retryAfter: `${windowMs / 1000} seconds`,
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: false,
+  });
+
+// =============================================================================
 // MIDDLEWARE SETUP
 // =============================================================================
 
+// Security headers using Helmet with CSP configuration
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
 // Compression middleware for response optimization
 app.use(compression());
-
-// Security headers using Helmet
-app.use(helmet());
 
 // Request ID middleware (must come before logging)
 app.use(requestIdMiddleware);
@@ -512,26 +686,21 @@ app.use(
 // CORS configuration
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGINS || "http://localhost:3000",
+    origin: process.env.ALLOWED_ORIGINS?.split(",") || [
+      "http://localhost:3000",
+    ],
     credentials: true,
   })
 );
 
 // Body parsing middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Rate limiting middleware
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  message: {
-    error: "Too many requests, please try again later.",
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use(limiter);
+// Apply different rate limits based on routes
+app.use("/auth", createRateLimit(15 * 60 * 1000, 5)); // 5 attempts per 15min for auth
+app.use("/api/", createRateLimit(15 * 60 * 1000, 100)); // 100 requests per 15min for API
+app.use("/", createRateLimit(15 * 60 * 1000, 200)); // Global fallback
 
 // =============================================================================
 // AUTHENTICATION & VALIDATION MIDDLEWARE
@@ -557,13 +726,14 @@ app.use(validateRequest);
  * - User context forwarding to downstream services
  * - Comprehensive error handling and logging
  * - Configurable timeouts
+ * - Circuit breaker integration
  */
 const createServiceProxy = (serviceUrl: string, serviceName: string) =>
   createProxyMiddleware({
     target: serviceUrl,
     changeOrigin: true,
-    timeout: 30000,
-    proxyTimeout: 30000,
+    timeout: SERVICE_TIMEOUTS[serviceName] || 30000,
+    proxyTimeout: SERVICE_TIMEOUTS[serviceName] || 30000,
 
     // Pass request ID to downstream services
     onProxyReq: (proxyReq: ClientRequest, req: AuthenticatedRequest) => {
@@ -592,18 +762,37 @@ const createServiceProxy = (serviceUrl: string, serviceName: string) =>
         statusCode: proxyRes.statusCode,
         path: req.path,
       });
+
+      // Record success for circuit breaker
+      if (proxyRes.statusCode && proxyRes.statusCode < 500) {
+        recordCircuitBreakerSuccess(serviceName);
+      }
     },
 
     onError: (err: Error, req: AuthenticatedRequest, res: Response) => {
       const requestId = req.requestId;
+
+      // Record failure for circuit breaker
+      recordCircuitBreakerFailure(serviceName);
+
       logger.error(`Proxy error for ${serviceName}`, requestId, err, {
         service: serviceName,
         path: req.path,
       });
 
-      res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
+      // Check if circuit breaker is open
+      if (!checkCircuitBreaker(serviceName)) {
+        return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
+          error: "Service temporarily unavailable due to circuit breaker",
+          correlationId: requestId,
+          service: serviceName,
+        });
+      }
+
+      return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
         error: "Service temporarily unavailable",
         correlationId: requestId,
+        service: serviceName,
       });
     },
   } as Options);
@@ -612,42 +801,51 @@ const createServiceProxy = (serviceUrl: string, serviceName: string) =>
 // ROUTE CONFIGURATION
 // =============================================================================
 
+const apiV1Router = express.Router();
+
 /**
- * @route /auth -> Auth Service
+ * @route /api/v1/auth -> Auth Service
  * @notice Routes authentication-related requests
  * @dev Handles login, registration, token refresh, etc.
  */
-app.use("/auth", authenticateToken, createServiceProxy(SERVICES.auth, "auth"));
+apiV1Router.use(
+  "/auth",
+  authenticateToken,
+  createServiceProxy(SERVICES.auth, "auth")
+);
 
 /**
- * @route /users -> User Service
+ * @route /api/v1/users -> User Service
  * @notice Routes user management requests
  * @dev Handles user CRUD operations, profiles, etc.
  */
-app.use(
+apiV1Router.use(
   "/users",
   authenticateToken,
   createServiceProxy(SERVICES.users, "users")
 );
 
 /**
- * @route /products -> Product Service
+ * @route /api/v1/products -> Product Service
  * @notice Routes product catalog requests
  * @dev Handles product CRUD, inventory, categories, etc.
  */
-app.use(
+apiV1Router.use(
   "/products",
   authenticateToken,
   createServiceProxy(SERVICES.products, "products")
 );
 
+// All traffic to /api/v1/* will now go through this router
+app.use("/api/v1", apiV1Router);
+
 // =============================================================================
-// HEALTH CHECK ENDPOINT
+// HEALTH CHECK ENDPOINTS
 // =============================================================================
 
 /**
  * @route GET /health
- * @notice Health check endpoint for monitoring and load balancers
+ * @notice Basic health check endpoint for monitoring and load balancers
  * @dev Returns service status and uptime information
  *
  * @response
@@ -672,6 +870,81 @@ app.get("/health", async (req: AuthenticatedRequest, res: Response) => {
 
   res.status(StatusCodes.OK).json(healthResponse);
 });
+
+/**
+ * @route GET /health/detailed
+ * @notice Detailed health check with microservice status
+ * @dev Checks each microservice health and returns comprehensive status
+ *
+ * @response
+ * {
+ *   "status": "OK",
+ *   "timestamp": "2023-10-01T12:00:00.000Z",
+ *   "uptime": 3600,
+ *   "serviceStatus": {
+ *     "auth": "HEALTHY",
+ *     "users": "UNREACHABLE",
+ *     "products": "HEALTHY"
+ *   }
+ * }
+ */
+app.get(
+  "/health/detailed",
+  async (req: AuthenticatedRequest, res: Response) => {
+    const requestId = req.requestId;
+    logger.info("Detailed health check requested", requestId);
+
+    const healthCheck: HealthResponse = {
+      status: "OK",
+      timestamp: new Date().toISOString(),
+      services: Object.keys(SERVICES),
+      uptime: process.uptime(),
+      serviceStatus: {},
+    };
+
+    // Check each microservice health
+    const healthChecks = Object.entries(SERVICES).map(
+      async ([service, url]) => {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+          const response = await fetch(`${url}/health`, {
+            signal: controller.signal,
+            headers: { "X-Request-Id": requestId || uuidv4() },
+          });
+
+          clearTimeout(timeoutId);
+
+          if (response.ok) {
+            healthCheck.serviceStatus![service] = "HEALTHY";
+          } else {
+            healthCheck.serviceStatus![service] = "UNHEALTHY";
+            healthCheck.status = "DEGRADED";
+          }
+        } catch (error) {
+          healthCheck.serviceStatus![service] = "UNREACHABLE";
+          healthCheck.status = "DEGRADED";
+          logger.warn(`Service health check failed: ${service}`, requestId, {
+            error,
+            service,
+          });
+        }
+      }
+    );
+
+    await Promise.allSettled(healthChecks);
+
+    const allHealthy = Object.values(healthCheck.serviceStatus!).every(
+      (status) => status === "HEALTHY"
+    );
+    const statusCode = allHealthy
+      ? StatusCodes.OK
+      : StatusCodes.SERVICE_UNAVAILABLE;
+
+    res.status(statusCode).json(healthCheck);
+  }
+);
 
 // =============================================================================
 // ERROR HANDLING MIDDLEWARE
@@ -728,21 +1001,41 @@ app.use(
 // =============================================================================
 
 /**
- * @function Server Startup
+ * @function initializeServer
  * @notice Initializes and starts the Express server
- * @dev Logs startup information and configured services
+ * @dev Validates environment, then starts the server
  */
-app.listen(PORT, () => {
-  logger.info(`API Gateway starting`, undefined, {
-    port: PORT,
-    environment: process.env.NODE_ENV || "development",
-    services: Object.keys(SERVICES),
-  });
+const initializeServer = () => {
+  try {
+    // Validate environment before starting
+    validateEnvironment();
 
-  console.log(`🚀 API Gateway running on http://localhost:${PORT}`);
-  console.log(`📊 Health check available at http://localhost:${PORT}/health`);
-  console.log(`🔧 Proxying services:`, Object.keys(SERVICES));
-});
+    app.listen(PORT, () => {
+      logger.info(`API Gateway starting`, undefined, {
+        port: PORT,
+        environment: process.env.NODE_ENV || "development",
+        services: Object.keys(SERVICES),
+        timeouts: SERVICE_TIMEOUTS,
+      });
+
+      console.log(`🚀 API Gateway running on http://localhost:${PORT}`);
+      console.log(
+        `📊 Health check available at http://localhost:${PORT}/health`
+      );
+      console.log(
+        `🔍 Detailed health at http://localhost:${PORT}/health/detailed`
+      );
+      console.log(`🔧 Proxying services:`, Object.keys(SERVICES));
+      console.log(`⏱️  Service timeouts:`, SERVICE_TIMEOUTS);
+    });
+  } catch (error) {
+    logger.error("Failed to initialize server", undefined, error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+initializeServer();
 
 // =============================================================================
 // GRACEFUL SHUTDOWN HANDLERS
@@ -755,7 +1048,12 @@ app.listen(PORT, () => {
  * @param signal - OS signal that triggered shutdown
  */
 const gracefulShutdown = (signal: string) => {
-  logger.info(`Received ${signal}, shutting down gracefully`, undefined);
+  logger.info(`Received ${signal}, shutting down gracefully`, undefined, {
+    signal,
+    uptime: process.uptime(),
+  });
+
+  // Close any connections or cleanup here
   process.exit(0);
 };
 

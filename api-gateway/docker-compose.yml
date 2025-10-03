@@ -1,0 +1,19 @@
+services:
+  api-gateway:
+    build:
+      context: .
+    image: api_gateway:1.0
+    container_name: api_gateway
+    ports:
+      - "3000:3000"
+    networks:
+      - gateway-network
+    environment:
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - USER_SERVICE_URL=http://user-service:3002
+      - PRODUCT_SERVICE_URL=http://product-service:3003
+
+networks:
+  gateway-network:
+    driver: bridge

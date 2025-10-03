@@ -1,0 +1,21 @@
+services:
+  api-gateway:
+    build:
+      target: builder
+    environment:
+      - NODE_ENV=development
+      - JWT_SECRET=dev-jwt-secret-change-in-production
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+          ignore:
+            - node_modules/
+        - action: rebuild
+          path: package.json
