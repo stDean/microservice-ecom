@@ -15,7 +15,6 @@
     "docker:down:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml down -v",
     "docker:build": "docker build -t api-gateway .",
     "test": "vitest",
-    "test:integration": "vitest run tests/integration",
     "test:unit": "vitest run tests/unit"
   },
   "keywords": [],
