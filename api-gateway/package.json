@@ -14,7 +14,9 @@
     "docker:down": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v",
     "docker:down:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml down -v",
     "docker:build": "docker build -t api-gateway .",
-    "test": "vitest"
+    "test": "vitest",
+    "test:integration": "vitest run tests/integration",
+    "test:unit": "vitest run tests/unit"
   },
   "keywords": [],
   "author": "",
@@ -30,6 +32,7 @@
     "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
+    "msw": "^2.11.3",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

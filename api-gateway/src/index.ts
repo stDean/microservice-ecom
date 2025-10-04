@@ -1083,6 +1083,8 @@ export {
   recordCircuitBreakerFailure,
   requestIdMiddleware,
   authenticateToken,
+  createServiceProxy,
+  circuitBreakers,
   SERVICES,
   SERVICE_TIMEOUTS,
 };
