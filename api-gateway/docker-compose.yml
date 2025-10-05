@@ -2,7 +2,7 @@ services:
   api-gateway:
     build:
       context: .
-    image: api_gateway:1.0
+    image: api_gateway_image:1.0
     container_name: api_gateway
     ports:
       - "3000:3000"

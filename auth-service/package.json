@@ -1,0 +1,42 @@
+{
+  "name": "auth-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest",
+    "start": "node dist/index.js",
+    "dev": "nodemon src/index.ts",
+    "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
+    "docker:dev:logs": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f",
+    "docker:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build",
+    "docker:down": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v",
+    "docker:down:prod": "docker-compose -f docker-compose.yml -f docker-compose.prod.yml down -v",
+    "docker:build": "docker build -t auth_service .",
+    "db:migrate": "npx drizzle-kit generate && npx drizzle-kit migrate",
+    "db:push": "npx drizzle-kit push"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "dotenv": "^17.2.3",
+    "drizzle-orm": "^0.44.6",
+    "express": "^5.1.0",
+    "http-status-codes": "^2.3.0",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.6.2",
+    "@types/pg": "^8.15.5",
+    "drizzle-kit": "^0.31.5",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}

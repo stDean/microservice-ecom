@@ -1,0 +1,10 @@
+services:
+  auth_service:
+    build: 
+      context: .
+      args:
+        - NODE_ENV=production
+      target: production
+    environment:
+      - NODE_ENV=production
+    command: ["npm", "run", "start"]

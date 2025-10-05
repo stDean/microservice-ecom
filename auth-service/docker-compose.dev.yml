@@ -1,0 +1,19 @@
+services:
+  auth_service:
+    build: 
+      context: .
+      args:
+        - NODE_ENV=development
+      target: development
+    environment:
+      PORT: 3000
+      NODE_ENV: development
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: ecomDB
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "start:dev"]
