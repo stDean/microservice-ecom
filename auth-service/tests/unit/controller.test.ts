@@ -766,4 +766,213 @@ describe("AuthController", () => {
       });
     });
   });
+
+  describe("resendVerificationEmail", () => {
+    it("should throw BadRequestError when email is missing or invalid", async () => {
+      // Test missing email
+      mockReq = { body: {} };
+      await expect(
+        AuthCtrl.resendVerificationEmail(
+          mockReq as Request,
+          mockRes as Response
+        )
+      ).rejects.toThrow(BadRequestError);
+
+      // Test invalid email
+      mockReq = { body: { email: "invalid-email" } };
+      await expect(
+        AuthCtrl.resendVerificationEmail(
+          mockReq as Request,
+          mockRes as Response
+        )
+      ).rejects.toThrow(BadRequestError);
+    });
+
+    it("should return success message when user does not exist", async () => {
+      mockReq = { body: { email: "nonexistent@example.com" } };
+
+      // Mock empty user result
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]),
+          }),
+        }),
+      } as any);
+
+      await AuthCtrl.resendVerificationEmail(
+        mockReq as Request,
+        mockRes as Response
+      );
+
+      expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
+      expect(mockJson).toHaveBeenCalledWith({
+        message: "If an account is found, a verification link has been sent.",
+      });
+    });
+
+    it("should return success message when email is already verified", async () => {
+      mockReq = { body: { email: "verified@example.com" } };
+
+      const verifiedUser = {
+        id: "user-uuid-123", // Use string UUID to match schema
+        email: "verified@example.com",
+        emailVerified: true,
+      };
+
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([verifiedUser]),
+          }),
+        }),
+      } as any);
+
+      await AuthCtrl.resendVerificationEmail(
+        mockReq as Request,
+        mockRes as Response
+      );
+
+      expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
+      expect(mockJson).toHaveBeenCalledWith({
+        message: "Email is already verified. You may proceed to log in.",
+      });
+    });
+
+    it("should resend verification email for unverified user", async () => {
+      mockReq = { body: { email: "unverified@example.com" } };
+
+      const unverifiedUser = {
+        id: "user-uuid-123", // Use string UUID to match schema
+        email: "unverified@example.com",
+        emailVerified: false,
+      };
+
+      const mockTokenData = {
+        token: "new-verification-token-123",
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      };
+
+      // Mock user selection
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([unverifiedUser]),
+          }),
+        }),
+      } as any);
+
+      // Mock transaction
+      const mockTx = {
+        delete: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockResolvedValue(undefined),
+      };
+
+      vi.mocked(db.transaction).mockImplementation(async (callback: any) => {
+        return await callback(mockTx);
+      });
+
+      vi.mocked(generateVerificationToken).mockReturnValue(mockTokenData);
+
+      await AuthCtrl.resendVerificationEmail(
+        mockReq as Request,
+        mockRes as Response
+      );
+
+      // Verify old tokens were deleted
+      expect(mockTx.delete).toHaveBeenCalledWith(verificationTokens);
+      expect(mockTx.where).toHaveBeenCalled();
+
+      // Verify new token was created
+      expect(generateVerificationToken).toHaveBeenCalled();
+      expect(mockTx.insert).toHaveBeenCalledWith(verificationTokens);
+      expect(mockTx.values).toHaveBeenCalledWith({
+        userId: "user-uuid-123",
+        token: "new-verification-token-123",
+        expiresAt: mockTokenData.expiresAt,
+      });
+
+      // Verify response
+      expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
+      expect(mockJson).toHaveBeenCalledWith({
+        message: "A new verification link has been sent to your email.",
+      });
+    });
+
+    it("should handle transaction errors gracefully", async () => {
+      mockReq = { body: { email: "unverified@example.com" } };
+
+      const unverifiedUser = {
+        id: "user-uuid-123", // Use string UUID to match schema
+        email: "unverified@example.com",
+        emailVerified: false,
+      };
+
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([unverifiedUser]),
+          }),
+        }),
+      } as any);
+
+      // Mock transaction to throw error
+      vi.mocked(db.transaction).mockRejectedValue(
+        new Error("Transaction failed")
+      );
+
+      await expect(
+        AuthCtrl.resendVerificationEmail(
+          mockReq as Request,
+          mockRes as Response
+        )
+      ).rejects.toThrow("Transaction failed");
+    });
+
+    it("should handle array destructuring when user exists", async () => {
+      mockReq = { body: { email: "test@example.com" } };
+
+      const user = {
+        id: "user-uuid-123", // Use string UUID to match schema
+        email: "test@example.com",
+        emailVerified: false,
+      };
+
+      // Mock returning an array with the user
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([user]),
+          }),
+        }),
+      } as any);
+
+      // Mock transaction
+      const mockTx = {
+        delete: vi.fn().mockReturnThis(),
+        where: vi.fn().mockResolvedValue(undefined),
+        insert: vi.fn().mockReturnThis(),
+        values: vi.fn().mockResolvedValue(undefined),
+      };
+
+      vi.mocked(db.transaction).mockImplementation(async (callback: any) => {
+        return await callback(mockTx);
+      });
+
+      vi.mocked(generateVerificationToken).mockReturnValue({
+        token: "test-token",
+        expiresAt: new Date(),
+      });
+
+      await AuthCtrl.resendVerificationEmail(
+        mockReq as Request,
+        mockRes as Response
+      );
+
+      expect(mockTx.delete).toHaveBeenCalledWith(verificationTokens);
+      expect(mockTx.where).toHaveBeenCalled();
+    });
+  });
 });

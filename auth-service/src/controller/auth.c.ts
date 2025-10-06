@@ -34,7 +34,7 @@ export const AuthCtrl = {
     }
 
     // Use transaction to ensure atomicity
-    const { newUser, token, expiresAt } = await db.transaction(async (tx) => {
+    const { newUser, token } = await db.transaction(async (tx) => {
       // Check for existing user within transaction to prevent race conditions
       const existingUser = await tx
         .select()
@@ -67,7 +67,7 @@ export const AuthCtrl = {
         expiresAt,
       });
 
-      return { newUser, token, expiresAt };
+      return { newUser, token };
     });
 
     // Send verification email (in real app)
@@ -132,6 +132,55 @@ export const AuthCtrl = {
 
     res.status(StatusCodes.OK).json({
       message: "Email verified successfully.",
+    });
+  },
+
+  resendVerificationEmail: async (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email || !isValidEmail(email)) {
+      throw new BadRequestError("A valid email is required.");
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) {
+      return res.status(StatusCodes.OK).json({
+        message: "If an account is found, a verification link has been sent.",
+      });
+    }
+
+    if (user.emailVerified) {
+      return res.status(StatusCodes.OK).json({
+        message: "Email is already verified. You may proceed to log in.",
+      });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(verificationTokens)
+        .where(eq(verificationTokens.userId, user.id));
+
+      const { token: verificationToken, expiresAt } =
+        generateVerificationToken();
+
+      await tx.insert(verificationTokens).values({
+        userId: user.id,
+        token: verificationToken,
+        expiresAt,
+      });
+
+      // Send verification email (in real app)
+      console.log(`Verification resent to: ${user.email}`);
+      console.log(`New verification token: ${verificationToken}`);
+    });
+
+    // 4. Send success response
+    res.status(StatusCodes.OK).json({
+      message: "A new verification link has been sent to your email.",
     });
   },
 

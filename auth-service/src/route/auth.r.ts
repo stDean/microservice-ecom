@@ -7,6 +7,10 @@ const router = Router();
 // Define your auth routes here
 router.post("/register", asyncHandler(AuthCtrl.register));
 router.get("/verify-email", asyncHandler(AuthCtrl.verifyEmail));
+router.post(
+  "/resend-verification",
+  asyncHandler(AuthCtrl.resendVerificationEmail)
+);
 router.get("/users", asyncHandler(AuthCtrl.getUsers));
 router.get("/verificationTokens", asyncHandler(AuthCtrl.getVerificationTokens));
 router.get("/sessions", asyncHandler(AuthCtrl.getSessions));
