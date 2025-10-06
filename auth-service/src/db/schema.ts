@@ -1,13 +1,11 @@
 // auth-service/drizzle/schema.js
 import {
-  pgTable,
-  serial,
-  varchar,
-  timestamp,
   boolean,
+  pgTable,
   text,
-  integer,
+  timestamp,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
@@ -15,9 +13,10 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password_hash: varchar("password_hash", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }),
-  role: varchar("role", { length: 50 }).default("customer"),
+  role: varchar("role", { length: 50 }).default("customer").notNull(),
   isActive: boolean("is_active").default(true),
   emailVerified: boolean("email_verified").default(false),
+  lastLoginAt: timestamp("last_login_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

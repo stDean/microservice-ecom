@@ -4,6 +4,4 @@ export const config = {
   POSTGRES_USER: process.env.POSTGRES_USER || "user",
   POSTGRES_DB: process.env.POSTGRES_DB || "auth_db",
   POSTGRES_PORT: process.env.POSTGRES_PORT || 5432,
-  REDIS_URL: process.env.REDIS_URL || "redis",
-  REDIS_PORT: process.env.REDIS_PORT || 6379,
 };

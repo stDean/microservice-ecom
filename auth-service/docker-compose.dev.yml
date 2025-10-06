@@ -1,19 +1,30 @@
 services:
-  auth_service:
+  auth-service:
     build: 
       context: .
       args:
         - NODE_ENV=development
-      target: development
+      target: builder
     environment:
-      PORT: 3000
+      PORT: 3001
       NODE_ENV: development
       POSTGRES_PASSWORD: example
       POSTGRES_USER: user
-      POSTGRES_DB: ecomDB
+      POSTGRES_DB: auth_db
     volumes:
       - ./src:/app/src:ro
       - ./package.json:/app/package.json:ro
       - ./tsconfig.json:/app/tsconfig.json:ro
       - /app/node_modules
-    command: ["npm", "run", "start:dev"]
+    command: ["npm", "run", "dev"]
+
+  db:
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: auth_db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+volumes:
+  db-data:

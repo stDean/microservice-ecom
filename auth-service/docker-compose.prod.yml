@@ -1,5 +1,5 @@
 services:
-  auth_service:
+  auth-service:
     build: 
       context: .
       args:

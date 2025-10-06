@@ -1,11 +1,10 @@
-import "express-async-errors";
 import "dotenv/config";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
 import cookieParser from "cookie-parser";
 import db from "./db/index";
 import AuthRoute from "./route/auth.r";
-import { errorHandlerMiddleware } from "./middleware/errorHandling";
+import { errorHandlerMiddleware } from "./middleware/errorHandling.m";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
