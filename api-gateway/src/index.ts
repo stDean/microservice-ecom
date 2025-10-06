@@ -956,7 +956,7 @@ app.get(
  * @notice Catch-all for undefined routes
  * @dev Returns standardized 404 response with correlation ID
  */
-app.use("/", (req: AuthenticatedRequest, res: Response) => {
+app.use((req: AuthenticatedRequest, res: Response) => {
   const requestId = req.requestId;
 
   logger.warn("Route not found", requestId, {

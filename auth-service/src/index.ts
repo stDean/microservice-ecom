@@ -1,13 +1,20 @@
+import "express-async-errors";
+import "dotenv/config";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
+import cookieParser from "cookie-parser";
 import db from "./db/index";
 import AuthRoute from "./route/auth.r";
+import { errorHandlerMiddleware } from "./middleware/errorHandling";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// MIDDLEWARE
 app.use(express.json());
+app.use(cookieParser());
 
+// HEALTH CHECK
 app.get("/health", (req, res) => {
   res.status(StatusCodes.OK).send({
     status: "OK",
@@ -20,6 +27,10 @@ app.get("/health", (req, res) => {
 // ROUTING
 app.use("/api/v1/auth", AuthRoute);
 
+// ERROR HANDLING MIDDLEWARE
+app.use(errorHandlerMiddleware);
+
+// START THE SERVER
 const startServer = async () => {
   try {
     // Check database connection here if needed
