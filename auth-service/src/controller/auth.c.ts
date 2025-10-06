@@ -197,10 +197,31 @@ export const AuthCtrl = {
     });
   },
 
-  logout: (req: Request, res: Response) => {
-    res
-      .status(StatusCodes.OK)
-      .json({ message: "User logged out successfully" });
+  logout: async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (refreshToken) {
+      try {
+        // Hash the refresh token to find the session
+        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+
+        // Delete the session from database
+        await db
+          .delete(sessions)
+          .where(eq(sessions.refresh_token_hash, refreshTokenHash));
+      } catch (error) {
+        // Log the error but continue with logout
+        console.error("Error deleting session during logout:", error);
+        // We don't throw the error - we still want to clear the cookie
+      }
+    }
+
+    // Clear the refresh token cookie
+    res.clearCookie("refreshToken");
+
+    return res.status(StatusCodes.OK).json({
+      message: "User logged out successfully",
+    });
   },
 
   refreshToken: (req: Request, res: Response) => {

@@ -15,7 +15,7 @@ router.get(
   asyncHandler(AuthCtrl.getPasswordResetTokens)
 );
 router.post("/login", asyncHandler(AuthCtrl.login));
-// router.post("/logout", asyncHandler(AuthCtrl.logout));
+router.post("/logout", asyncHandler(AuthCtrl.logout));
 // router.post("/refresh-token", asyncHandler(AuthCtrl.refreshToken));
 // router.post("/access-token", asyncHandler(AuthCtrl.accessToken));
 // router.post("/forget-password", asyncHandler(AuthCtrl.forgetPassword));
