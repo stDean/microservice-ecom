@@ -523,11 +523,11 @@ describe("AuthController", () => {
       );
     });
 
-    // Fixed: Properly mock db.insert and db.update with method chaining
     it("should successfully login user with correct credentials", async () => {
       mockReq = {
         body: { email: "test@example.com", password: "correctpassword" },
         headers: { "user-agent": "test-agent" },
+        ip: "127.0.0.1",
       };
 
       const user = {
@@ -564,19 +564,21 @@ describe("AuthController", () => {
       // Mock bcrypt hash for refresh token
       vi.mocked(bcrypt.hash).mockResolvedValue("hashed-refresh-token" as never);
 
-      // Mock session insertion - return a promise directly
-      vi.mocked(db.insert).mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue(undefined),
+      // FIXED: Mock transaction with proper tx methods
+      const mockTx = {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockResolvedValue(undefined),
         }),
-      } as any);
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        }),
+      };
 
-      // Mock user update for last login - return a promise directly
-      vi.mocked(db.update).mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(undefined),
-        }),
-      } as any);
+      vi.mocked(db.transaction).mockImplementation(async (callback: any) => {
+        return await callback(mockTx);
+      });
 
       await AuthCtrl.login(mockReq as Request, mockRes as Response);
 
@@ -597,10 +599,10 @@ describe("AuthController", () => {
         "Test User"
       );
 
-      // Verify session was created
-      expect(db.insert).toHaveBeenCalledWith(sessions);
+      // Verify session was created within transaction
+      expect(mockTx.insert).toHaveBeenCalledWith(sessions);
 
-      // Verify cookie was set
+      // Verify cookie was set with new options
       expect(mockCookie).toHaveBeenCalledWith(
         "refreshToken",
         "mock-refresh-token",
@@ -609,11 +611,13 @@ describe("AuthController", () => {
           secure: false, // Not in production
           expires: mockTokens.refreshTokenExpiresAt,
           sameSite: "strict",
+          path: "/",
+          domain: undefined, // process.env.COOKIE_DOMAIN is undefined in test
         }
       );
 
-      // Verify last login was updated
-      expect(db.update).toHaveBeenCalledWith(users);
+      // Verify last login was updated within transaction
+      expect(mockTx.update).toHaveBeenCalledWith(users);
 
       // Verify response
       expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
@@ -637,6 +641,7 @@ describe("AuthController", () => {
       mockReq = {
         body: { email: "test@example.com", password: "correctpassword" },
         headers: { "user-agent": "test-agent" },
+        ip: "127.0.0.1",
       };
 
       const user = {
@@ -667,18 +672,21 @@ describe("AuthController", () => {
       vi.mocked(generateAuthTokens).mockReturnValue(mockTokens);
       vi.mocked(bcrypt.hash).mockResolvedValue("hashed-refresh-token" as never);
 
-      // Mock database operations to return proper chainable objects
-      vi.mocked(db.insert).mockReturnValue({
-        values: vi.fn().mockReturnValue({
-          returning: vi.fn().mockResolvedValue(undefined),
+      // FIXED: Mock transaction
+      const mockTx = {
+        insert: vi.fn().mockReturnValue({
+          values: vi.fn().mockResolvedValue(undefined),
         }),
-      } as any);
+        update: vi.fn().mockReturnValue({
+          set: vi.fn().mockReturnValue({
+            where: vi.fn().mockResolvedValue(undefined),
+          }),
+        }),
+      };
 
-      vi.mocked(db.update).mockReturnValue({
-        set: vi.fn().mockReturnValue({
-          where: vi.fn().mockResolvedValue(undefined),
-        }),
-      } as any);
+      vi.mocked(db.transaction).mockImplementation(async (callback: any) => {
+        return await callback(mockTx);
+      });
 
       await AuthCtrl.login(mockReq as Request, mockRes as Response);
 
@@ -702,36 +710,65 @@ describe("AuthController", () => {
 
       await AuthCtrl.logout(mockReq as Request, mockRes as Response);
 
-      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken");
+      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined, // process.env.COOKIE_DOMAIN is undefined in test
+      });
       expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
       expect(mockJson).toHaveBeenCalledWith({
         message: "User logged out successfully",
       });
     });
 
-    // Fixed: Properly mock db.delete with method chaining
     it("should delete session and clear cookie when refresh token exists", async () => {
       const refreshToken = "mock-refresh-token";
       mockReq = { cookies: { refreshToken } };
 
-      // Mock bcrypt hash
-      vi.mocked(bcrypt.hash).mockResolvedValue("hashed-refresh-token" as never);
+      // Mock session data
+      const mockSessions = [
+        {
+          id: 1,
+          userId: 1,
+          refresh_token_hash: "hashed-refresh-token",
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          userAgent: "test-agent",
+        },
+      ];
 
-      // Mock session deletion - return a promise directly
+      // Mock session selection - FIXED: Use proper chaining
+      const mockFrom = vi.fn().mockReturnValue(mockSessions);
+      vi.mocked(db.select).mockReturnValue({
+        from: mockFrom,
+      } as any);
+
+      // Mock bcrypt.compare to return true for the session
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+
+      // Mock session deletion
       vi.mocked(db.delete).mockReturnValue({
         where: vi.fn().mockResolvedValue(undefined),
       } as any);
 
       await AuthCtrl.logout(mockReq as Request, mockRes as Response);
 
-      // Verify refresh token was hashed
-      expect(bcrypt.hash).toHaveBeenCalledWith(refreshToken, 10);
+      // FIXED: Verify sessions were fetched - separate assertions
+      expect(db.select).toHaveBeenCalled();
+      expect(mockFrom).toHaveBeenCalledWith(sessions);
+
+      // Verify bcrypt.compare was called to find the matching session
+      expect(bcrypt.compare).toHaveBeenCalledWith(
+        refreshToken,
+        mockSessions[0].refresh_token_hash
+      );
 
       // Verify session was deleted
       expect(db.delete).toHaveBeenCalledWith(sessions);
 
-      // Verify cookie was cleared
-      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken");
+      // Verify cookie was cleared with new options
+      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined,
+      });
 
       // Verify response
       expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
@@ -744,22 +781,20 @@ describe("AuthController", () => {
       const refreshToken = "mock-refresh-token";
       mockReq = { cookies: { refreshToken } };
 
-      // Mock bcrypt hash
-      vi.mocked(bcrypt.hash).mockResolvedValue("hashed-refresh-token" as never);
-
-      // Mock the entire db.delete chain to throw an error
-      const mockDeleteImplementation = vi.fn().mockReturnValue({
-        where: vi.fn().mockImplementation(() => {
-          throw new Error("Database error");
+      // Mock empty sessions
+      vi.mocked(db.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue([]),
         }),
-      });
+      } as any);
 
-      vi.mocked(db.delete).mockImplementation(mockDeleteImplementation);
-
-      // Should still clear cookie and return success
+      // Should still clear cookie and return success even if no sessions found
       await AuthCtrl.logout(mockReq as Request, mockRes as Response);
 
-      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken");
+      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined,
+      });
       expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
       expect(mockJson).toHaveBeenCalledWith({
         message: "User logged out successfully",
