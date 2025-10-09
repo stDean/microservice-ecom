@@ -1,21 +1,20 @@
-import { describe, it, expect, vi, beforeEach, afterEach, Mock } from "vitest";
-import { Request, Response } from "express";
 import bcrypt from "bcrypt";
+import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { eq } from "drizzle-orm";
+import { beforeEach, describe, expect, it, Mock, vi } from "vitest";
+import { AuthCtrl } from "../../src/controller/auth.c";
+import db from "../../src/db";
 import {
-  users,
-  verificationTokens,
   passwordResetTokens,
   sessions,
+  users,
+  verificationTokens,
 } from "../../src/db/schema";
-import { AuthCtrl } from "../../src/controller/auth.c";
 import { BadRequestError, NotFoundError } from "../../src/errors";
 import {
-  generateVerificationToken,
   generateAuthTokens,
+  generateVerificationToken,
 } from "../../src/utils/tokenGeneration";
-import db from "../../src/db";
 
 // Mock dependencies
 vi.mock("../../src/db", () => {
@@ -819,7 +818,7 @@ describe("AuthController", () => {
           httpOnly: true,
           secure: false, // Not in production
           expires: mockTokens.refreshTokenExpiresAt,
-          sameSite: "strict",
+          sameSite: "lax",
           path: "/",
           domain: undefined, // process.env.COOKIE_DOMAIN is undefined in test
         }

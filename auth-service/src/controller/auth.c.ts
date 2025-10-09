@@ -11,13 +11,20 @@ import {
 } from "../db/schema";
 import { BadRequestError, NotFoundError } from "../errors";
 import { isValidEmail } from "../utils/helpers";
+import logger from "../utils/logger";
 import {
   generateAuthTokens,
   generateVerificationToken,
 } from "../utils/tokenGeneration";
-import logger from "../utils/logger";
 
 export const AuthCtrl = {
+  /**
+   * @notice Register a new user with email verification
+   * @dev Creates user account, hashes password, generates verification token
+   * @param req.body.email User's email address
+   * @param req.body.password User's password (min 8 chars)
+   * @param req.body.name User's display name (optional)
+   */
   register: async (req: Request, res: Response) => {
     const { email, password, name } = req.body;
     if (!email || !password) {
@@ -85,6 +92,69 @@ export const AuthCtrl = {
       .json({ message: "Registration successful. Please check your email." });
   },
 
+  /**
+   * @notice Resend email verification link
+   * @dev Generates new verification token, invalidates old ones
+   * @param req.body.email User's email address
+   */
+  resendVerificationEmail: async (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email || !isValidEmail(email)) {
+      throw new BadRequestError("A valid email is required.");
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) {
+      return res.status(StatusCodes.OK).json({
+        message: "If an account is found, a verification link has been sent.",
+      });
+    }
+
+    if (user.emailVerified) {
+      return res.status(StatusCodes.OK).json({
+        message: "Email is already verified. You may proceed to log in.",
+      });
+    }
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(verificationTokens)
+        .where(eq(verificationTokens.userId, user.id));
+
+      const { token: verificationToken, expiresAt } =
+        generateVerificationToken();
+
+      await tx.insert(verificationTokens).values({
+        userId: user.id,
+        token: verificationToken,
+        expiresAt,
+      });
+
+      logger.info("Verification email resent", {
+        userId: user.id,
+        email: user.email,
+      });
+      // Send verification email (in real app)
+      console.log(`Verification resent to: ${user.email}`);
+      console.log(`New verification token: ${verificationToken}`);
+    });
+
+    // 4. Send success response
+    res.status(StatusCodes.OK).json({
+      message: "A new verification link has been sent to your email.",
+    });
+  },
+
+  /**
+   * @notice Verify user's email using token
+   * @dev Validates token, marks email as verified, cleans up used token
+   * @param req.query.token Email verification token from link
+   */
   verifyEmail: async (req: Request, res: Response) => {
     const verificationToken = req.query.token as string;
     if (!verificationToken) {
@@ -143,59 +213,12 @@ export const AuthCtrl = {
     });
   },
 
-  resendVerificationEmail: async (req: Request, res: Response) => {
-    const { email } = req.body;
-    if (!email || !isValidEmail(email)) {
-      throw new BadRequestError("A valid email is required.");
-    }
-
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-
-    if (!user) {
-      return res.status(StatusCodes.OK).json({
-        message: "If an account is found, a verification link has been sent.",
-      });
-    }
-
-    if (user.emailVerified) {
-      return res.status(StatusCodes.OK).json({
-        message: "Email is already verified. You may proceed to log in.",
-      });
-    }
-
-    await db.transaction(async (tx) => {
-      await tx
-        .delete(verificationTokens)
-        .where(eq(verificationTokens.userId, user.id));
-
-      const { token: verificationToken, expiresAt } =
-        generateVerificationToken();
-
-      await tx.insert(verificationTokens).values({
-        userId: user.id,
-        token: verificationToken,
-        expiresAt,
-      });
-
-      logger.info("Verification email resent", {
-        userId: user.id,
-        email: user.email,
-      });
-      // Send verification email (in real app)
-      console.log(`Verification resent to: ${user.email}`);
-      console.log(`New verification token: ${verificationToken}`);
-    });
-
-    // 4. Send success response
-    res.status(StatusCodes.OK).json({
-      message: "A new verification link has been sent to your email.",
-    });
-  },
-
+  /**
+   * @notice Authenticate user and create session
+   * @dev Validates credentials, creates access/refresh tokens, sets HTTP-only cookie
+   * @param req.body.email User's email address
+   * @param req.body.password User's password
+   */
   login: async (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -251,12 +274,15 @@ export const AuthCtrl = {
     });
 
     const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      expires: refreshTokenExpiresAt,
-      sameSite: "strict" as const,
-      path: "/",
-      domain: process.env.COOKIE_DOMAIN, // Set this in your environment
+      httpOnly: true, // Prevents client-side JavaScript access
+      secure: process.env.NODE_ENV === "production", // HTTPS only in production
+      expires: refreshTokenExpiresAt, // Automatic expiration
+      sameSite:
+        process.env.NODE_ENV === "production"
+          ? ("strict" as "strict")
+          : ("lax" as "lax"), // CSRF protection
+      path: "/", // Cookie accessible across entire site
+      domain: process.env.COOKIE_DOMAIN, // Cross-subdomain sharing (optional)
     };
 
     res.cookie("refreshToken", refreshToken, cookieOptions);
@@ -275,6 +301,11 @@ export const AuthCtrl = {
     });
   },
 
+  /**
+   * @notice Terminate user session
+   * @dev Invalidates refresh token server-side, clears client cookie
+   * @param req.cookies.refreshToken Session refresh token
+   */
   logout: async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
 
@@ -315,6 +346,11 @@ export const AuthCtrl = {
     });
   },
 
+  /**
+   * @notice Refresh access token using valid refresh token
+   * @dev Validates refresh token, issues new access token, rotates refresh token
+   * @param req.cookies.refreshToken Valid refresh token from HTTP-only cookie
+   */
   refreshToken: async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
     if (!refreshToken) {
@@ -396,7 +432,10 @@ export const AuthCtrl = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       expires: refreshTokenExpiresAt,
-      sameSite: "strict",
+      sameSite:
+        process.env.NODE_ENV === "production"
+          ? ("strict" as "strict")
+          : ("lax" as "lax"),
       path: "/",
       domain: process.env.COOKIE_DOMAIN,
     });
@@ -415,6 +454,11 @@ export const AuthCtrl = {
     });
   },
 
+  /**
+   * @notice Initiate password reset process
+   * @dev Generates reset token, sends email (prevents email enumeration)
+   * @param req.body.email User's email address
+   */
   forgetPassword: async (req: Request, res: Response) => {
     const { email } = req.body;
     if (!email || !isValidEmail(email)) {
@@ -461,6 +505,11 @@ export const AuthCtrl = {
     });
   },
 
+  /**
+   * @notice Resend password reset email
+   * @dev Generates new reset token, invalidates previous tokens
+   * @param req.body.email User's email address
+   */
   resendResetPasswordEmail: async (req: Request, res: Response) => {
     const { email } = req.body;
     if (!email || !isValidEmail(email)) {
@@ -506,6 +555,12 @@ export const AuthCtrl = {
     });
   },
 
+  /**
+   * @notice Reset user password using valid token
+   * @dev Validates reset token, hashes new password, invalidates all sessions
+   * @param req.query.token Password reset token from email
+   * @param req.body.newPassword New password (min 8 chars)
+   */
   resetPassword: async (req: Request, res: Response) => {
     const { token } = req.query;
     const { newPassword } = req.body;
