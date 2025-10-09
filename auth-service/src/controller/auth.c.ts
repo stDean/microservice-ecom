@@ -2,6 +2,8 @@ import bcrypt from "bcrypt";
 import { eq } from "drizzle-orm";
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import crypto from "crypto";
+import { CookieOptions } from "express"; // ADD THIS IMPORT
 import db from "../db";
 import {
   passwordResetTokens,
@@ -258,9 +260,11 @@ export const AuthCtrl = {
       generateAuthTokens(user.id, user.role, user.email, user.name as string);
 
     // Use transaction for session creation and lastLogin update
-    await db.transaction(async (tx) => {
+    const sessionId = await db.transaction(async (tx) => {
+      const sessionId = crypto.randomUUID();
       const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
       await tx.insert(sessions).values({
+        id: sessionId,
         userId: user.id,
         refresh_token_hash: refreshTokenHash,
         expiresAt: refreshTokenExpiresAt,
@@ -271,21 +275,21 @@ export const AuthCtrl = {
         .update(users)
         .set({ lastLoginAt: new Date() })
         .where(eq(users.id, user.id));
+
+      return sessionId;
     });
 
-    const cookieOptions = {
+    const cookieOptions: CookieOptions = {
       httpOnly: true, // Prevents client-side JavaScript access
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
       expires: refreshTokenExpiresAt, // Automatic expiration
-      sameSite:
-        process.env.NODE_ENV === "production"
-          ? ("strict" as "strict")
-          : ("lax" as "lax"), // CSRF protection
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection
       path: "/", // Cookie accessible across entire site
       domain: process.env.COOKIE_DOMAIN, // Cross-subdomain sharing (optional)
     };
 
     res.cookie("refreshToken", refreshToken, cookieOptions);
+    res.cookie("sessionId", sessionId, cookieOptions); // Add session ID
 
     logger.info("User logged in successfully", { userId: user.id });
 
@@ -302,42 +306,34 @@ export const AuthCtrl = {
   },
 
   /**
-   * @notice Terminate user session
-   * @dev Invalidates refresh token server-side, clears client cookie
-   * @param req.cookies.refreshToken Session refresh token
+   * @notice Refresh access token using session ID
+   * @dev Validates session by ID, rotates refresh token, updates session with new token and expiration
+   * @param req.cookies.sessionId Session identifier for efficient database lookup
+   * @param req.cookies.refreshToken Current refresh token for cryptographic validation
    */
   logout: async (req: Request, res: Response) => {
-    const refreshToken = req.cookies.refreshToken;
+    const sessionId = req.cookies.sessionId;
 
-    if (refreshToken) {
+    if (sessionId) {
       try {
-        // SECURITY FIX: Get all sessions and compare with bcrypt.compare
-        const allSessions = await db.select().from(sessions);
-
-        for (const session of allSessions) {
-          const isValid = await bcrypt.compare(
-            refreshToken,
-            session.refresh_token_hash
-          );
-          if (isValid) {
-            await db.delete(sessions).where(eq(sessions.id, session.id));
-            logger.info("Session deleted during logout", {
-              sessionId: session.id,
-            });
-            break;
-          }
-        }
+        await db.delete(sessions).where(eq(sessions.id, sessionId));
+        logger.info("Session deleted during logout", { sessionId });
       } catch (error) {
-        logger.error("Error deleting session during logout", { error });
-        console.error("Error deleting session during logout:", error);
+        logger.error("Error deleting session during logout", {
+          error,
+          sessionId,
+        });
+        // Continue with logout even if session deletion fails
       }
     }
 
-    // Clear the refresh token cookie
-    res.clearCookie("refreshToken", {
+    const clearCookieOptions: CookieOptions = {
       path: "/",
       domain: process.env.COOKIE_DOMAIN,
-    });
+    };
+
+    res.clearCookie("refreshToken", clearCookieOptions);
+    res.clearCookie("sessionId", clearCookieOptions);
 
     logger.info("User logged out successfully");
 
@@ -347,42 +343,56 @@ export const AuthCtrl = {
   },
 
   /**
-   * @notice Refresh access token using valid refresh token
-   * @dev Validates refresh token, issues new access token, rotates refresh token
-   * @param req.cookies.refreshToken Valid refresh token from HTTP-only cookie
+   * @notice Terminate user session using session ID
+   * @dev Deletes session by ID from database, clears authentication cookies.
+   * @param req.cookies.sessionId Session identifier for direct database lookup
    */
   refreshToken: async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
-    if (!refreshToken) {
-      throw new BadRequestError("Refresh token required");
+    const sessionId = req.cookies.sessionId;
+
+    if (!refreshToken || !sessionId) {
+      throw new BadRequestError("Refresh token and session ID required");
     }
+
+    // Define clear cookie options once
+    const clearCookieOptions: CookieOptions = {
+      path: "/",
+      domain: process.env.COOKIE_DOMAIN,
+    };
 
     const { accessToken, newRefreshToken, user, refreshTokenExpiresAt } =
       await db.transaction(async (tx) => {
-        // Get all sessions and find the valid one
-        const allSessions = await tx.select().from(sessions);
+        const sessionResult = await tx
+          .select()
+          .from(sessions)
+          .where(eq(sessions.id, sessionId))
+          .limit(1);
 
-        let validSession = null;
-        for (const session of allSessions) {
-          const isValid = await bcrypt.compare(
-            refreshToken,
-            session.refresh_token_hash
-          );
-          if (isValid) {
-            validSession = session;
-            break;
-          }
+        if (sessionResult.length === 0) {
+          res.clearCookie("refreshToken", clearCookieOptions);
+          res.clearCookie("sessionId", clearCookieOptions);
+          throw new BadRequestError("Invalid session");
         }
 
-        if (!validSession) {
-          res.clearCookie("refreshToken");
+        const session = sessionResult[0];
+
+        // Validate refresh token
+        const isValid = await bcrypt.compare(
+          refreshToken,
+          session.refresh_token_hash
+        );
+        if (!isValid) {
+          res.clearCookie("refreshToken", clearCookieOptions);
+          res.clearCookie("sessionId", clearCookieOptions);
           throw new BadRequestError("Invalid refresh token");
         }
 
         // Check if refresh token has expired
-        if (validSession.expiresAt < new Date()) {
-          await tx.delete(sessions).where(eq(sessions.id, validSession.id));
-          res.clearCookie("refreshToken");
+        if (session.expiresAt < new Date()) {
+          await tx.delete(sessions).where(eq(sessions.id, session.id));
+          res.clearCookie("refreshToken", clearCookieOptions);
+          res.clearCookie("sessionId", clearCookieOptions);
           throw new BadRequestError("Refresh token expired");
         }
 
@@ -390,16 +400,25 @@ export const AuthCtrl = {
         const userResult = await tx
           .select()
           .from(users)
-          .where(eq(users.id, validSession.userId!))
+          .where(eq(users.id, session.userId!))
           .limit(1);
 
         if (userResult.length === 0) {
-          await tx.delete(sessions).where(eq(sessions.id, validSession.id));
-          res.clearCookie("refreshToken");
+          await tx.delete(sessions).where(eq(sessions.id, session.id));
+          res.clearCookie("refreshToken", clearCookieOptions);
+          res.clearCookie("sessionId", clearCookieOptions);
           throw new NotFoundError("User not found");
         }
 
         const user = userResult[0];
+
+        // Ensure email is verified
+        if (!user.emailVerified) {
+          await tx.delete(sessions).where(eq(sessions.id, session.id));
+          res.clearCookie("refreshToken", clearCookieOptions);
+          res.clearCookie("sessionId", clearCookieOptions);
+          throw new BadRequestError("Email not verified");
+        }
 
         // Generate new tokens
         const {
@@ -422,23 +441,22 @@ export const AuthCtrl = {
             expiresAt: refreshTokenExpiresAt,
             userAgent: req.headers["user-agent"] || "unknown",
           })
-          .where(eq(sessions.id, validSession.id));
+          .where(eq(sessions.id, session.id));
 
         return { accessToken, newRefreshToken, refreshTokenExpiresAt, user };
       });
 
-    // Set new refresh token in cookie
-    res.cookie("refreshToken", newRefreshToken, {
+    // Set new refresh token in cookie (sessionId remains the same)
+    const cookieOptions: CookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       expires: refreshTokenExpiresAt,
-      sameSite:
-        process.env.NODE_ENV === "production"
-          ? ("strict" as "strict")
-          : ("lax" as "lax"),
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
       domain: process.env.COOKIE_DOMAIN,
-    });
+    };
+
+    res.cookie("refreshToken", newRefreshToken, cookieOptions);
 
     logger.info("Access token refreshed successfully", { userId: user.id });
 

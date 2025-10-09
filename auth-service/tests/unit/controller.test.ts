@@ -772,7 +772,6 @@ describe("AuthController", () => {
       // Mock bcrypt hash for refresh token
       vi.mocked(bcrypt.hash).mockResolvedValue("hashed-refresh-token" as never);
 
-      // FIXED: Mock transaction with proper tx methods
       const mockTx = {
         insert: vi.fn().mockReturnValue({
           values: vi.fn().mockResolvedValue(undefined),
@@ -880,7 +879,6 @@ describe("AuthController", () => {
       vi.mocked(generateAuthTokens).mockReturnValue(mockTokens);
       vi.mocked(bcrypt.hash).mockResolvedValue("hashed-refresh-token" as never);
 
-      // FIXED: Mock transaction
       const mockTx = {
         insert: vi.fn().mockReturnValue({
           values: vi.fn().mockResolvedValue(undefined),
@@ -920,7 +918,11 @@ describe("AuthController", () => {
 
       expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
         path: "/",
-        domain: undefined, // process.env.COOKIE_DOMAIN is undefined in test
+        domain: undefined,
+      });
+      expect(mockClearCookie).toHaveBeenCalledWith("sessionId", {
+        path: "/",
+        domain: undefined,
       });
       expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
       expect(mockJson).toHaveBeenCalledWith({
@@ -928,29 +930,9 @@ describe("AuthController", () => {
       });
     });
 
-    it("should delete session and clear cookie when refresh token exists", async () => {
-      const refreshToken = "mock-refresh-token";
-      mockReq = { cookies: { refreshToken } };
-
-      // Mock session data
-      const mockSessions = [
-        {
-          id: 1,
-          userId: 1,
-          refresh_token_hash: "hashed-refresh-token",
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          userAgent: "test-agent",
-        },
-      ];
-
-      // Mock session selection - FIXED: Use proper chaining
-      const mockFrom = vi.fn().mockReturnValue(mockSessions);
-      vi.mocked(db.select).mockReturnValue({
-        from: mockFrom,
-      } as any);
-
-      // Mock bcrypt.compare to return true for the session
-      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+    it("should delete session and clear cookie when session ID exists", async () => {
+      const sessionId = "mock-session-id";
+      mockReq = { cookies: { sessionId } };
 
       // Mock session deletion
       vi.mocked(db.delete).mockReturnValue({
@@ -959,26 +941,18 @@ describe("AuthController", () => {
 
       await AuthCtrl.logout(mockReq as Request, mockRes as Response);
 
-      // FIXED: Verify sessions were fetched - separate assertions
-      expect(db.select).toHaveBeenCalled();
-      expect(mockFrom).toHaveBeenCalledWith(sessions);
-
-      // Verify bcrypt.compare was called to find the matching session
-      expect(bcrypt.compare).toHaveBeenCalledWith(
-        refreshToken,
-        mockSessions[0].refresh_token_hash
-      );
-
-      // Verify session was deleted
+      // Verify session was deleted by ID
       expect(db.delete).toHaveBeenCalledWith(sessions);
 
-      // Verify cookie was cleared with new options
       expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
         path: "/",
         domain: undefined,
       });
+      expect(mockClearCookie).toHaveBeenCalledWith("sessionId", {
+        path: "/",
+        domain: undefined,
+      });
 
-      // Verify response
       expect(mockStatus).toHaveBeenCalledWith(StatusCodes.OK);
       expect(mockJson).toHaveBeenCalledWith({
         message: "User logged out successfully",
@@ -986,20 +960,22 @@ describe("AuthController", () => {
     });
 
     it("should handle session deletion errors gracefully", async () => {
-      const refreshToken = "mock-refresh-token";
-      mockReq = { cookies: { refreshToken } };
+      const sessionId = "mock-session-id";
+      mockReq = { cookies: { sessionId } };
 
-      // Mock empty sessions
-      vi.mocked(db.select).mockReturnValue({
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue([]),
-        }),
-      } as any);
+      // Mock session deletion to throw error - FIXED: Use mockImplementation
+      vi.mocked(db.delete).mockImplementation(() => {
+        throw new Error("Database error");
+      });
 
-      // Should still clear cookie and return success even if no sessions found
+      // Should still clear cookies and return success
       await AuthCtrl.logout(mockReq as Request, mockRes as Response);
 
       expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined,
+      });
+      expect(mockClearCookie).toHaveBeenCalledWith("sessionId", {
         path: "/",
         domain: undefined,
       });
@@ -1021,12 +997,20 @@ describe("AuthController", () => {
 
     it("should throw BadRequestError when refresh token is invalid", async () => {
       const refreshToken = "invalid-token";
-      mockReq = { cookies: { refreshToken } };
+      const sessionId = "mock-session-id";
+      mockReq = {
+        cookies: { refreshToken, sessionId },
+        headers: { "user-agent": "test-agent" },
+      };
 
-      // Mock empty sessions array
+      // Mock empty session result
       const mockTx = {
         select: vi.fn().mockReturnValue({
-          from: vi.fn().mockResolvedValue([]), // Return empty array directly
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([]), // No session found
+            }),
+          }),
         }),
       };
 
@@ -1034,40 +1018,42 @@ describe("AuthController", () => {
         return await callback(mockTx);
       });
 
-      // Mock bcrypt.compare to return false for all sessions
-      vi.mocked(bcrypt.compare).mockResolvedValue(false as never);
-
       await expect(
         AuthCtrl.refreshToken(mockReq as Request, mockRes as Response)
       ).rejects.toThrow(BadRequestError);
 
-      // FIXED: Update expectation to match actual implementation
-      // The implementation clears cookie without options in refreshToken method
-      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken");
+      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined,
+      });
+      expect(mockClearCookie).toHaveBeenCalledWith("sessionId", {
+        path: "/",
+        domain: undefined,
+      });
     });
 
     it("should generate new tokens and update session when refresh token is valid", async () => {
       const refreshToken = "valid-refresh-token";
+      const sessionId = "valid-session-id";
       mockReq = {
-        cookies: { refreshToken },
+        cookies: { refreshToken, sessionId },
         headers: { "user-agent": "test-agent" },
       };
 
-      const mockSessions = [
-        {
-          id: 1,
-          userId: 1,
-          refresh_token_hash: "hashed-refresh-token",
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          userAgent: "test-agent",
-        },
-      ];
+      const mockSession = {
+        id: sessionId,
+        userId: 1,
+        refresh_token_hash: "hashed-refresh-token",
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        userAgent: "test-agent",
+      };
 
       const user = {
         id: 1,
         email: "test@example.com",
         name: "Test User",
         role: "user",
+        emailVerified: true,
       };
 
       const newTokens = {
@@ -1076,24 +1062,24 @@ describe("AuthController", () => {
         refreshTokenExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       };
 
-      // FIXED: Create a complete mock transaction with proper method chaining
-      const mockUserSelection = {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([user]),
-          }),
-        }),
-      };
-
+      // Mock transaction with session lookup by ID
       const mockTx = {
         select: vi
           .fn()
-          // First call: get all sessions
           .mockReturnValueOnce({
-            from: vi.fn().mockResolvedValue(mockSessions),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([mockSession]),
+              }),
+            }),
           })
-          // Second call: get user data
-          .mockReturnValueOnce(mockUserSelection),
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([user]),
+              }),
+            }),
+          }),
         update: vi.fn().mockReturnValue({
           set: vi.fn().mockReturnValue({
             where: vi.fn().mockResolvedValue(undefined),
@@ -1139,21 +1125,27 @@ describe("AuthController", () => {
 
     it("should throw BadRequestError when refresh token has expired", async () => {
       const refreshToken = "expired-refresh-token";
-      mockReq = { cookies: { refreshToken } };
+      const sessionId = "expired-session-id";
+      mockReq = {
+        cookies: { refreshToken, sessionId },
+        headers: { "user-agent": "test-agent" },
+      };
 
-      const mockSessions = [
-        {
-          id: 1,
-          userId: 1,
-          refresh_token_hash: "hashed-expired-token",
-          expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Expired
-          userAgent: "test-agent",
-        },
-      ];
+      const mockSession = {
+        id: sessionId,
+        userId: 1,
+        refresh_token_hash: "hashed-expired-token",
+        expiresAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // Expired
+        userAgent: "test-agent",
+      };
 
       const mockTx = {
         select: vi.fn().mockReturnValue({
-          from: vi.fn().mockResolvedValue(mockSessions),
+          from: vi.fn().mockReturnValue({
+            where: vi.fn().mockReturnValue({
+              limit: vi.fn().mockResolvedValue([mockSession]),
+            }),
+          }),
         }),
         delete: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue(undefined),
@@ -1170,43 +1162,51 @@ describe("AuthController", () => {
         AuthCtrl.refreshToken(mockReq as Request, mockRes as Response)
       ).rejects.toThrow(BadRequestError);
 
-      expect(mockTx.delete).toHaveBeenCalledWith(sessions);
-      // FIXED: Update expectation to match actual implementation
-      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken");
+      expect(mockTx.delete).toHaveBeenCalled();
+
+      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined,
+      });
+      expect(mockClearCookie).toHaveBeenCalledWith("sessionId", {
+        path: "/",
+        domain: undefined,
+      });
     });
 
     it("should throw NotFoundError when user not found", async () => {
       const refreshToken = "valid-refresh-token";
-      mockReq = { cookies: { refreshToken } };
+      const sessionId = "valid-session-id";
+      mockReq = {
+        cookies: { refreshToken, sessionId },
+        headers: { "user-agent": "test-agent" },
+      };
 
-      const mockSessions = [
-        {
-          id: 1,
-          userId: 999, // Non-existent user
-          refresh_token_hash: "hashed-refresh-token",
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          userAgent: "test-agent",
-        },
-      ];
-
-      // FIXED: Mock user selection to return empty array
-      const mockUserSelection = {
-        from: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]), // Empty array for user not found
-          }),
-        }),
+      const mockSession = {
+        id: sessionId,
+        userId: 999, // Non-existent user
+        refresh_token_hash: "hashed-refresh-token",
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        userAgent: "test-agent",
       };
 
       const mockTx = {
         select: vi
           .fn()
-          // First call: get all sessions
           .mockReturnValueOnce({
-            from: vi.fn().mockResolvedValue(mockSessions),
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([mockSession]),
+              }),
+            }),
           })
-          // Second call: get user data (returns empty)
-          .mockReturnValueOnce(mockUserSelection),
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([]), // User not found
+              }),
+            }),
+          }),
         delete: vi.fn().mockReturnValue({
           where: vi.fn().mockResolvedValue(undefined),
         }),
@@ -1222,9 +1222,84 @@ describe("AuthController", () => {
         AuthCtrl.refreshToken(mockReq as Request, mockRes as Response)
       ).rejects.toThrow(NotFoundError);
 
-      expect(mockTx.delete).toHaveBeenCalledWith(sessions);
-      // FIXED: Update expectation to match actual implementation
-      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken");
+      expect(mockTx.delete).toHaveBeenCalled();
+
+      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined,
+      });
+      expect(mockClearCookie).toHaveBeenCalledWith("sessionId", {
+        path: "/",
+        domain: undefined,
+      });
+    });
+
+    it("should make sure user is still verified", async () => {
+      const refreshToken = "valid-refresh-token";
+      const sessionId = "valid-session-id";
+      mockReq = {
+        cookies: { refreshToken, sessionId },
+        headers: { "user-agent": "test-agent" },
+      };
+
+      const mockSession = {
+        id: sessionId,
+        userId: 1,
+        refresh_token_hash: "hashed-refresh-token",
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        userAgent: "test-agent",
+      };
+
+      const user = {
+        id: 1,
+        email: "test@test.com",
+        name: "Test User",
+        role: "user",
+        emailVerified: false, // Not verified
+      };
+
+      const mockTx = {
+        select: vi
+          .fn()
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([mockSession]),
+              }),
+            }),
+          })
+          .mockReturnValueOnce({
+            from: vi.fn().mockReturnValue({
+              where: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue([user]),
+              }),
+            }),
+          }),
+        delete: vi.fn().mockReturnValue({
+          where: vi.fn().mockReturnValue(undefined),
+        }),
+      };
+
+      vi.mocked(db.transaction).mockImplementation(async (callback: any) => {
+        return await callback(mockTx);
+      });
+
+      vi.mocked(bcrypt.compare).mockResolvedValue(true as never);
+
+      await expect(
+        AuthCtrl.refreshToken(mockReq as Request, mockRes as Response)
+      ).rejects.toThrow(BadRequestError);
+
+      expect(mockTx.delete).toHaveBeenCalled();
+
+      expect(mockClearCookie).toHaveBeenCalledWith("refreshToken", {
+        path: "/",
+        domain: undefined,
+      });
+      expect(mockClearCookie).toHaveBeenCalledWith("sessionId", {
+        path: "/",
+        domain: undefined,
+      });
     });
   });
 
@@ -1317,7 +1392,6 @@ describe("AuthController", () => {
     it("should return success when user does not exist", async () => {
       mockReq = { body: { email: "nonexistent@example.com" } };
 
-      // FIXED: Properly mock the db.select chain
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
@@ -1350,7 +1424,6 @@ describe("AuthController", () => {
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       };
 
-      // FIXED: Properly mock the db.select chain
       vi.mocked(db.select).mockReturnValue({
         from: vi.fn().mockReturnValue({
           where: vi.fn().mockReturnValue({
