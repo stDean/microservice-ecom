@@ -10,9 +10,6 @@ services:
       - gateway-network
     environment:
       - PORT=3000
-      - AUTH_SERVICE_URL=http://auth-service:3001
-      - USER_SERVICE_URL=http://user-service:3002
-      - PRODUCT_SERVICE_URL=http://product-service:3003
 
 networks:
   gateway-network:

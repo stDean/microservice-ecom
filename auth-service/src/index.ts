@@ -14,7 +14,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 // HEALTH CHECK
-app.get("/health", (req, res) => {
+app.get("/api/v1/auth/health", (req, res) => {
   res.status(StatusCodes.OK).send({
     status: "OK",
     timestamp: new Date(),
@@ -37,7 +37,9 @@ const startServer = async () => {
     console.log("Database connected successfully");
 
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      // Add "0.0.0.0" to listen on all interfaces
+      console.log(`Auth service is running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/api/v1/auth/health`);
     });
   } catch (error) {
     console.error("Failed to connect to Drizzle MySQL database:", error);

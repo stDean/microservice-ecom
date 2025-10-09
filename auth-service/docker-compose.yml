@@ -12,13 +12,13 @@ services:
       auth-migrate:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api/v1/auth/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
 
-  db:
+  auth-db:
     image: postgres
     restart: always
     shm_size: 128mb
@@ -42,7 +42,7 @@ services:
     networks:
       - auth-net
     depends_on:
-      db: 
+      auth-db: 
         condition: service_healthy
 
 networks:

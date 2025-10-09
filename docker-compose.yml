@@ -1,0 +1,70 @@
+# --- 1. Service Definitions ---
+services:
+  # The public entry point for the entire application
+  api-gateway:
+    container_name: api_gateway
+    build:
+      context: ./api-gateway
+    image: api_gateway_image:1.0
+    ports:
+      - "3000:3000" # Expose the gateway publicly
+    networks:
+      - ecom_network
+    restart: always
+    depends_on:
+      auth-service:
+        condition: service_healthy # This now works because auth-service has a healthcheck
+
+  # Authentication Service
+  auth-service:
+    container_name: auth_service
+    build:
+      context: ./auth-service
+    image: auth_service_image:1.0
+    expose:
+      - "3001" # Only expose internally to the network
+    networks:
+      - ecom_network
+    restart: always
+    # UPDATED: Healthcheck configuration for robust failure handling
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3001,path:'/api/v1/auth/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      auth-migrate:
+        condition: service_completed_successfully
+
+  # PostgreSQL Database for Authentication
+  auth-db:
+    image: postgres
+    container_name: auth_db
+    restart: always
+    shm_size: 128mb
+    networks:
+      - ecom_network
+    healthcheck:
+      # Used by auth-migrate to ensure the DB is ready
+      test: ["CMD-SHELL", "pg_isready -U user -d auth_db"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  # Database Migration Service - Runs once and exits
+  auth-migrate:
+    container_name: auth_migrate
+    build: 
+      context: ./auth-service
+    command: ["npm", "run", "db:push"]
+    networks:
+      - ecom_network
+    depends_on:
+      auth-db: # Correctly depends on 'auth-db'
+        condition: service_healthy
+
+# --- 2. Networks ---
+networks:
+  ecom_network:
+    driver: bridge

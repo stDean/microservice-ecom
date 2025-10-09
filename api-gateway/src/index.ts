@@ -122,7 +122,7 @@ interface CircuitBreakerState {
  * @env AUTH_SERVICE_URL, USER_SERVICE_URL, PRODUCT_SERVICE_URL
  */
 const SERVICES: ServiceConfig = {
-  auth: process.env.AUTH_SERVICE_URL || "http://localhost:3001",
+  auth: process.env.AUTH_SERVICE_URL!,
   users: process.env.USER_SERVICE_URL || "http://localhost:3002",
   products: process.env.PRODUCT_SERVICE_URL || "http://localhost:3003",
 };
@@ -401,18 +401,9 @@ const authenticateToken = (
   const token = authHeader && authHeader.split(" ")[1];
 
   // Skip authentication for public routes
-  const publicRoutes = [
-    "/health",
-    "/health/detailed",
-    "/favicon.ico",
-    "/api/v1/auth/login",
-    "/api/v1/auth/register",
-  ];
+  const publicRoutes = ["/health", "/health/detailed", "/favicon.ico"];
 
-  const isPublicRoute =
-    publicRoutes.some((route) => req.path === route) ||
-    req.path.startsWith("/auth/login") ||
-    req.path.startsWith("/auth/register");
+  const isPublicRoute = publicRoutes.some((route) => req.path === route);
 
   if (isPublicRoute) {
     return next();
@@ -700,8 +691,6 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // Apply different rate limits based on routes
 app.use("/auth", createRateLimit(15 * 60 * 1000, 5)); // 5 attempts per 15min for auth
-app.use("/api/", createRateLimit(15 * 60 * 1000, 100)); // 100 requests per 15min for API
-app.use("/", createRateLimit(15 * 60 * 1000, 200)); // Global fallback
 
 // =============================================================================
 // AUTHENTICATION & VALIDATION MIDDLEWARE
@@ -729,29 +718,35 @@ app.use(validateRequest);
  * - Configurable timeouts
  * - Circuit breaker integration
  */
-const createServiceProxy = (serviceUrl: string, serviceName: string) =>
-  createProxyMiddleware({
+const createServiceProxy = (serviceUrl: string, serviceName: string) => {
+  logger.info(`Initializing proxy for ${serviceName}`, undefined, {
+    target: serviceUrl,
+  });
+
+  return createProxyMiddleware({
     target: serviceUrl,
     changeOrigin: true,
-    timeout: SERVICE_TIMEOUTS[serviceName] || 30000,
-    proxyTimeout: SERVICE_TIMEOUTS[serviceName] || 30000,
-
-    // Pass request ID to downstream services
+    pathRewrite: (path, req) => {
+      const newPath = `/api/v1/${serviceName}${path}`;
+      console.log(`[DEBUG] Rewriting ${path} to ${newPath}`);
+      return newPath;
+    },
     onProxyReq: (proxyReq: ClientRequest, req: AuthenticatedRequest) => {
       const requestId = req.requestId;
+
       if (requestId) {
         proxyReq.setHeader("X-Request-Id", requestId);
       }
 
-      // Pass user info to downstream services
       if (req.user) {
-        proxyReq.setHeader("X-User-Id", req.user!.id);
-        proxyReq.setHeader("X-User-Role", req.user!.role);
+        proxyReq.setHeader("X-User-Id", req.user.id);
+        proxyReq.setHeader("X-User-Role", req.user.role);
       }
 
       logger.info(`Proxying request to ${serviceName}`, requestId, {
         service: serviceName,
-        path: req.path,
+        originalPath: req.path,
+        targetPath: proxyReq.path,
         method: req.method,
       });
     },
@@ -764,7 +759,6 @@ const createServiceProxy = (serviceUrl: string, serviceName: string) =>
         path: req.path,
       });
 
-      // Record success for circuit breaker
       if (proxyRes.statusCode && proxyRes.statusCode < 500) {
         recordCircuitBreakerSuccess(serviceName);
       }
@@ -772,19 +766,20 @@ const createServiceProxy = (serviceUrl: string, serviceName: string) =>
 
     onError: (err: Error, req: AuthenticatedRequest, res: Response) => {
       const requestId = req.requestId;
-
-      // Record failure for circuit breaker
       recordCircuitBreakerFailure(serviceName);
 
-      logger.error(`Proxy error for ${serviceName}`, requestId, err, {
+      const errorMessage = `Proxy connection error for ${serviceName}: ${err.message}`;
+
+      logger.error(errorMessage, requestId, err, {
         service: serviceName,
         path: req.path,
+        errorCode: (err as any).code,
+        targetUrl: `${SERVICES[serviceName]}${req.path}`,
       });
 
-      // Check if circuit breaker is open
       if (!checkCircuitBreaker(serviceName)) {
         return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
-          error: "Service temporarily unavailable due to circuit breaker",
+          error: "Service unavailable due to circuit breaker",
           correlationId: requestId,
           service: serviceName,
         });
@@ -792,53 +787,23 @@ const createServiceProxy = (serviceUrl: string, serviceName: string) =>
 
       return res.status(StatusCodes.SERVICE_UNAVAILABLE).json({
         error: "Service temporarily unavailable",
+        details:
+          process.env.NODE_ENV === "development" ? errorMessage : undefined,
         correlationId: requestId,
         service: serviceName,
       });
     },
   } as Options);
+};
 
 // =============================================================================
 // ROUTE CONFIGURATION
 // =============================================================================
 
-const apiV1Router = express.Router();
-
 /**
- * @route /api/v1/auth -> Auth Service
- * @notice Routes authentication-related requests
- * @dev Handles login, registration, token refresh, etc.
+ * @route /auth -> Auth Service
  */
-apiV1Router.use(
-  "/auth",
-  authenticateToken,
-  createServiceProxy(SERVICES.auth, "auth")
-);
-
-/**
- * @route /api/v1/users -> User Service
- * @notice Routes user management requests
- * @dev Handles user CRUD operations, profiles, etc.
- */
-apiV1Router.use(
-  "/users",
-  authenticateToken,
-  createServiceProxy(SERVICES.users, "users")
-);
-
-/**
- * @route /api/v1/products -> Product Service
- * @notice Routes product catalog requests
- * @dev Handles product CRUD, inventory, categories, etc.
- */
-apiV1Router.use(
-  "/products",
-  authenticateToken,
-  createServiceProxy(SERVICES.products, "products")
-);
-
-// All traffic to /api/v1/* will now go through this router
-app.use("/api/v1", apiV1Router);
+app.use("/auth", createServiceProxy(SERVICES.auth, "auth"));
 
 // =============================================================================
 // HEALTH CHECK ENDPOINTS
