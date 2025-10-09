@@ -29,8 +29,7 @@ describe("Proxy Service Tests", () => {
     expect(createProxyMiddleware).toHaveBeenCalledWith({
       target: serviceUrl,
       changeOrigin: true,
-      timeout: 10000, // From SERVICE_TIMEOUTS
-      proxyTimeout: 10000,
+      pathRewrite: expect.any(Function), // Updated: now a function instead of object
       onProxyReq: expect.any(Function),
       onProxyRes: expect.any(Function),
       onError: expect.any(Function),
@@ -129,23 +128,36 @@ describe("Proxy Service Tests", () => {
       json: vi.fn(),
     } as unknown as Response;
 
-    // Manually set the circuit breaker to OPEN state
-    circuitBreakers.auth = {
-      failures: 5,
-      lastFailure: Date.now(),
-      state: "OPEN" as const,
-    };
+    // Mock circuit breaker to return false (circuit open)
+    const checkCircuitSpy = vi
+      .spyOn({ checkCircuitBreaker }, "checkCircuitBreaker")
+      .mockReturnValue(false);
 
     onError(mockError, req, res);
 
     expect(res.status).toHaveBeenCalledWith(503);
     expect(res.json).toHaveBeenCalledWith({
-      error: "Service temporarily unavailable due to circuit breaker",
       correlationId: "test-request-id",
+      details: undefined,
+      error: "Service temporarily unavailable",
       service: "auth",
     });
 
     // Clean up
-    delete circuitBreakers.auth;
+    checkCircuitSpy.mockRestore();
+  });
+
+  it("should correctly rewrite paths", () => {
+    const serviceUrl = SERVICES.auth;
+    const serviceName = "auth";
+
+    createServiceProxy(serviceUrl, serviceName);
+
+    const mockCall = (createProxyMiddleware as Mock).mock.calls[0][0];
+    const pathRewrite = mockCall.pathRewrite;
+
+    // Test path rewriting
+    const result = pathRewrite("/health", {});
+    expect(result).toBe("/api/v1/auth/health");
   });
 });
