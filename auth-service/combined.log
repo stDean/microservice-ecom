@@ -136,3 +136,238 @@
 {"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:02:58.391Z"}
 {"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:02:58.396Z","userId":"user-uuid-123"}
 {"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:02:58.399Z","userId":"user-uuid-123"}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:15:20.716Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:15:20.733Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:15:20.737Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:15:20.738Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:15:20.740Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:15:20.741Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:15:20.743Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:15:20.745Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:15:20.747Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:15:20.748Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:15:20.750Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:15:20.760Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:15:20.765Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:15:20.768Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:15:20.780Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:15:20.782Z","userId":1}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:15:29.676Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:15:29.683Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:15:40.265Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:15:40.282Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:15:40.285Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:15:40.287Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:15:40.288Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:15:40.290Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:15:40.292Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:15:40.295Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:15:40.296Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:15:40.297Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:15:40.298Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:15:40.308Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:15:40.312Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:15:40.315Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:15:40.326Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:15:40.327Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:16:07.290Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:16:07.307Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:16:07.310Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:16:07.312Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:16:07.314Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:16:07.315Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:16:07.317Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:07.320Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:16:07.322Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:07.322Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:16:07.324Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:07.333Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:16:07.337Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:16:07.340Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:16:07.353Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:16:07.355Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:16:07.358Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:16:15.390Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:16:24.009Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:16:24.026Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:16:24.029Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:16:24.031Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:16:24.033Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:16:24.035Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:16:24.037Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:24.038Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:16:24.040Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:24.041Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:16:24.042Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:24.052Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:16:24.056Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:16:24.059Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:16:24.070Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:16:24.071Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:16:24.074Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:16:34.196Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:16:41.311Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:16:41.328Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:16:41.332Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:16:41.333Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:16:41.335Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:16:41.337Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:16:41.339Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:41.341Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:16:41.343Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:41.343Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:16:41.345Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:16:41.355Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:16:41.360Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:16:41.364Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:16:41.375Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:16:41.377Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:16:41.384Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:17:33.736Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:17:33.756Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:17:33.760Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:17:33.762Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:17:33.764Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:17:33.766Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:17:33.770Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:17:33.772Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:17:33.775Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:17:33.775Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:17:33.777Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:17:33.793Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:17:33.802Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:17:33.810Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:17:33.824Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:17:33.826Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:17:33.838Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:17:33.850Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:17:34.795Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:17:34.811Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:17:34.815Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:17:34.816Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:17:34.817Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:17:34.819Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:17:34.821Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:17:34.823Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:17:34.824Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:17:34.825Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:17:34.826Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:17:34.836Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:17:34.840Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:17:34.843Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:17:34.853Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:17:34.855Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:17:34.858Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:17:34.862Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:20:20.166Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:20:20.184Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:20:20.187Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:20:20.189Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:20:20.192Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:20:20.194Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:20:20.197Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:20:20.200Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:20:20.201Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:20:20.202Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:20:20.204Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:20:20.215Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:20:20.221Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:20:20.224Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:20:20.242Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:20:20.244Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:20:20.247Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:20:20.251Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:21:05.000Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:21:05.033Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:21:05.038Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:21:05.040Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:21:05.043Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:21:05.045Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:21:05.047Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:05.050Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:21:05.052Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:05.054Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:21:05.056Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:05.084Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:21:05.089Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:21:05.093Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:21:05.114Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:21:05.115Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:21:05.119Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:21:05.124Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:21:08.965Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:21:08.986Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:21:08.990Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:21:08.992Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:21:08.993Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:21:08.996Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:21:08.999Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:09.001Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:21:09.003Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:09.004Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:21:09.005Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:09.019Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:21:09.027Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:21:09.030Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:21:09.064Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:21:09.066Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:21:09.070Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:21:09.075Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:21:14.108Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:21:26.575Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:21:26.599Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:21:26.602Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:21:26.605Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:21:26.607Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:21:26.609Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:21:26.612Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:26.614Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:21:26.616Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:26.616Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:21:26.620Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:21:26.632Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:21:26.638Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:21:26.641Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:21:26.660Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:21:26.662Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:21:26.666Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:21:26.671Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:29:20.660Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:29:20.672Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:29:20.674Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:29:20.675Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:29:20.676Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:29:20.677Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:29:20.678Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:29:20.680Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:29:20.681Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:29:20.681Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:29:20.682Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:29:20.689Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:29:20.692Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:29:20.694Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:29:20.701Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:29:20.701Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:29:20.704Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:29:20.706Z","userId":1}
+{"level":"info","message":"Access token refreshed successfully","timestamp":"2025-10-09T12:42:13.395Z","userId":1}
+{"level":"info","message":"Access token refreshed successfully","timestamp":"2025-10-09T12:42:14.022Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-09T12:42:22.080Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-09T12:42:22.092Z","token":"valid-token"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-09T12:42:22.094Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-09T12:42:22.095Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-09T12:42:22.096Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:42:22.097Z","userId":1}
+{"level":"info","message":"User logged in successfully","timestamp":"2025-10-09T12:42:22.098Z","userId":1}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:42:22.099Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":1,"timestamp":"2025-10-09T12:42:22.101Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:42:22.101Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","timestamp":"2025-10-09T12:42:22.102Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-09T12:42:22.110Z"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:42:22.113Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-09T12:42:22.114Z","userId":"user-uuid-123"}
+{"level":"info","message":"Access token refreshed successfully","timestamp":"2025-10-09T12:42:22.117Z","userId":1}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-09T12:42:22.120Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-09T12:42:22.121Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-09T12:42:22.123Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-09T12:42:22.126Z","userId":1}
