@@ -1,20 +1,21 @@
-import { StatusCodes } from "http-status-codes";
-import { Request, Response } from "express";
 import bcrypt from "bcrypt";
-import { NotFoundError, BadRequestError } from "../errors";
-import db from "../db";
 import { eq } from "drizzle-orm";
+import { Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
+import db from "../db";
 import {
+  passwordResetTokens,
+  sessions,
   users,
   verificationTokens,
-  sessions,
-  passwordResetTokens,
 } from "../db/schema";
+import { BadRequestError, NotFoundError } from "../errors";
+import { isValidEmail } from "../utils/helpers";
 import {
   generateAuthTokens,
   generateVerificationToken,
 } from "../utils/tokenGeneration";
-import { isValidEmail } from "../utils/helpers";
+import logger from "../utils/logger";
 
 export const AuthCtrl = {
   register: async (req: Request, res: Response) => {
@@ -68,6 +69,11 @@ export const AuthCtrl = {
       });
 
       return { newUser, token };
+    });
+
+    logger.info("User registered successfully", {
+      userId: newUser.id,
+      email: newUser.email,
     });
 
     // Send verification email (in real app)
@@ -130,7 +136,9 @@ export const AuthCtrl = {
         .where(eq(verificationTokens.id, token.id));
     });
 
-    res.status(StatusCodes.OK).json({
+    logger.info("Email verified successfully", { token: verificationToken });
+
+    return res.status(StatusCodes.OK).json({
       message: "Email verified successfully.",
     });
   },
@@ -173,6 +181,10 @@ export const AuthCtrl = {
         expiresAt,
       });
 
+      logger.info("Verification email resent", {
+        userId: user.id,
+        email: user.email,
+      });
       // Send verification email (in real app)
       console.log(`Verification resent to: ${user.email}`);
       console.log(`New verification token: ${verificationToken}`);
@@ -197,43 +209,60 @@ export const AuthCtrl = {
       .limit(1);
 
     if (userResult.length === 0) {
+      logger.warn("Failed login attempt - user not found", { email });
       throw new NotFoundError("User not found");
     }
 
     const user = userResult[0];
     if (!user.emailVerified) {
+      logger.warn("Failed login attempt - email not verified", {
+        userId: user.id,
+      });
       throw new BadRequestError("Please verify your email before logging in");
     }
 
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
+      logger.warn("Failed login attempt", {
+        email,
+        ip: req.ip,
+        userAgent: req.headers["user-agent"],
+      });
       throw new BadRequestError("Invalid credentials");
     }
 
     const { accessToken, refreshToken, refreshTokenExpiresAt } =
       generateAuthTokens(user.id, user.role, user.email, user.name as string);
 
-    const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
-    await db.insert(sessions).values({
-      userId: user.id,
-      refresh_token_hash: refreshTokenHash,
-      expiresAt: refreshTokenExpiresAt,
-      userAgent: req.headers["user-agent"] || "unknown",
+    // Use transaction for session creation and lastLogin update
+    await db.transaction(async (tx) => {
+      const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+      await tx.insert(sessions).values({
+        userId: user.id,
+        refresh_token_hash: refreshTokenHash,
+        expiresAt: refreshTokenExpiresAt,
+        userAgent: req.headers["user-agent"] || "unknown",
+      });
+
+      await tx
+        .update(users)
+        .set({ lastLoginAt: new Date() })
+        .where(eq(users.id, user.id));
     });
 
-    res.cookie("refreshToken", refreshToken, {
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // Only secure in production
+      secure: process.env.NODE_ENV === "production",
       expires: refreshTokenExpiresAt,
-      sameSite: "strict",
-    });
+      sameSite: "strict" as const,
+      path: "/",
+      domain: process.env.COOKIE_DOMAIN, // Set this in your environment
+    };
 
-    await db
-      .update(users)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(users.id, user.id));
+    res.cookie("refreshToken", refreshToken, cookieOptions);
 
-    // Include access token in response (client will store this in memory/localStorage)
+    logger.info("User logged in successfully", { userId: user.id });
+
     return res.status(StatusCodes.OK).json({
       message: "Login successful",
       accessToken,
@@ -251,50 +280,287 @@ export const AuthCtrl = {
 
     if (refreshToken) {
       try {
-        // Hash the refresh token to find the session
-        const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
+        // SECURITY FIX: Get all sessions and compare with bcrypt.compare
+        const allSessions = await db.select().from(sessions);
 
-        // Delete the session from database
-        await db
-          .delete(sessions)
-          .where(eq(sessions.refresh_token_hash, refreshTokenHash));
+        for (const session of allSessions) {
+          const isValid = await bcrypt.compare(
+            refreshToken,
+            session.refresh_token_hash
+          );
+          if (isValid) {
+            await db.delete(sessions).where(eq(sessions.id, session.id));
+            logger.info("Session deleted during logout", {
+              sessionId: session.id,
+            });
+            break;
+          }
+        }
       } catch (error) {
-        // Log the error but continue with logout
+        logger.error("Error deleting session during logout", { error });
         console.error("Error deleting session during logout:", error);
-        // We don't throw the error - we still want to clear the cookie
       }
     }
 
     // Clear the refresh token cookie
-    res.clearCookie("refreshToken");
+    res.clearCookie("refreshToken", {
+      path: "/",
+      domain: process.env.COOKIE_DOMAIN,
+    });
+
+    logger.info("User logged out successfully");
 
     return res.status(StatusCodes.OK).json({
       message: "User logged out successfully",
     });
   },
 
-  refreshToken: (req: Request, res: Response) => {
-    return res
-      .status(StatusCodes.OK)
-      .json({ message: "Refresh token successfully obtained." });
+  refreshToken: async (req: Request, res: Response) => {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      throw new BadRequestError("Refresh token required");
+    }
+
+    const { accessToken, newRefreshToken, user, refreshTokenExpiresAt } =
+      await db.transaction(async (tx) => {
+        // Get all sessions and find the valid one
+        const allSessions = await tx.select().from(sessions);
+
+        let validSession = null;
+        for (const session of allSessions) {
+          const isValid = await bcrypt.compare(
+            refreshToken,
+            session.refresh_token_hash
+          );
+          if (isValid) {
+            validSession = session;
+            break;
+          }
+        }
+
+        if (!validSession) {
+          res.clearCookie("refreshToken");
+          throw new BadRequestError("Invalid refresh token");
+        }
+
+        // Check if refresh token has expired
+        if (validSession.expiresAt < new Date()) {
+          await tx.delete(sessions).where(eq(sessions.id, validSession.id));
+          res.clearCookie("refreshToken");
+          throw new BadRequestError("Refresh token expired");
+        }
+
+        // Get user data
+        const userResult = await tx
+          .select()
+          .from(users)
+          .where(eq(users.id, validSession.userId!))
+          .limit(1);
+
+        if (userResult.length === 0) {
+          await tx.delete(sessions).where(eq(sessions.id, validSession.id));
+          res.clearCookie("refreshToken");
+          throw new NotFoundError("User not found");
+        }
+
+        const user = userResult[0];
+
+        // Generate new tokens
+        const {
+          accessToken,
+          refreshToken: newRefreshToken,
+          refreshTokenExpiresAt,
+        } = generateAuthTokens(
+          user.id,
+          user.role,
+          user.email,
+          user.name as string
+        );
+
+        // Update session with new refresh token
+        const refreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
+        await tx
+          .update(sessions)
+          .set({
+            refresh_token_hash: refreshTokenHash,
+            expiresAt: refreshTokenExpiresAt,
+            userAgent: req.headers["user-agent"] || "unknown",
+          })
+          .where(eq(sessions.id, validSession.id));
+
+        return { accessToken, newRefreshToken, refreshTokenExpiresAt, user };
+      });
+
+    // Set new refresh token in cookie
+    res.cookie("refreshToken", newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      expires: refreshTokenExpiresAt,
+      sameSite: "strict",
+      path: "/",
+      domain: process.env.COOKIE_DOMAIN,
+    });
+
+    logger.info("Access token refreshed successfully", { userId: user.id });
+
+    return res.status(StatusCodes.OK).json({
+      message: "Access token refreshed successfully",
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    });
   },
 
-  accessToken: (req: Request, res: Response) => {
-    return res
-      .status(StatusCodes.OK)
-      .json({ message: "Access token successfully obtained." });
+  forgetPassword: async (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email || !isValidEmail(email)) {
+      throw new BadRequestError("A valid email is required.");
+    }
+
+    // Use transaction for consistency
+    await db.transaction(async (tx) => {
+      const existingUser = await tx
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (existingUser.length === 0) {
+        logger.warn("Password reset attempted for non-existent email", {
+          email,
+        });
+        return;
+      }
+
+      // Clean up existing tokens and create new one
+      await tx
+        .delete(passwordResetTokens)
+        .where(eq(passwordResetTokens.userId, existingUser[0].id));
+
+      const { token, expiresAt } = generateVerificationToken();
+      await tx.insert(passwordResetTokens).values({
+        userId: existingUser[0].id,
+        token,
+        expiresAt,
+      });
+
+      logger.info("Password reset token generated", {
+        userId: existingUser[0].id,
+      });
+      console.log(`Password reset email would be sent to: ${email}`);
+      console.log(`Password reset token: ${token}`);
+    });
+
+    // Always return success to prevent email enumeration
+    return res.status(StatusCodes.OK).json({
+      message: "If an account exists, a password reset link has been sent.",
+    });
   },
 
-  forgetPassword: (req: Request, res: Response) => {
-    return res
-      .status(StatusCodes.OK)
-      .json({ message: "Forget password route reached." });
+  resendResetPasswordEmail: async (req: Request, res: Response) => {
+    const { email } = req.body;
+    if (!email || !isValidEmail(email)) {
+      throw new BadRequestError("A valid email is required.");
+    }
+
+    const userResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (userResult.length === 0) {
+      // Don't reveal whether email exists
+      return res.status(StatusCodes.OK).json({
+        message: "If an account is found, a password reset link has been sent.",
+      });
+    }
+
+    const user = userResult[0];
+
+    await db.transaction(async (tx) => {
+      await tx
+        .delete(passwordResetTokens)
+        .where(eq(passwordResetTokens.userId, user.id));
+
+      const { token, expiresAt } = generateVerificationToken();
+
+      await tx.insert(passwordResetTokens).values({
+        userId: user.id,
+        token,
+        expiresAt,
+      });
+
+      logger.info("Password reset email resent", { userId: user.id });
+
+      console.log(`Password reset resent to: ${user.email}`);
+      console.log(`New password reset token: ${token}`);
+    });
+
+    return res.status(StatusCodes.OK).json({
+      message: "A new password reset link has been sent to your email.",
+    });
   },
 
-  resetPassword: (req: Request, res: Response) => {
+  resetPassword: async (req: Request, res: Response) => {
+    const { token } = req.query;
+    const { newPassword } = req.body;
+    if (!token || typeof token !== "string") {
+      throw new BadRequestError("Reset token is required.");
+    }
+    if (!newPassword || newPassword.length < 8) {
+      throw new BadRequestError(
+        "New password must be at least 8 characters long."
+      );
+    }
+
+    await db.transaction(async (tx) => {
+      const passTokenWithUser = await tx
+        .select({
+          token: passwordResetTokens,
+          user: users,
+        })
+        .from(passwordResetTokens)
+        .where(eq(passwordResetTokens.token, token))
+        .innerJoin(users, eq(users.id, passwordResetTokens.userId))
+        .limit(1);
+
+      if (passTokenWithUser.length === 0) {
+        throw new NotFoundError("Invalid or expired password reset token.");
+      }
+
+      const { token: passToken, user } = passTokenWithUser[0];
+
+      if (passToken.expiresAt < new Date()) {
+        await tx
+          .delete(passwordResetTokens)
+          .where(eq(passwordResetTokens.id, passToken.id));
+        throw new BadRequestError("Password reset token has expired.");
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      await tx
+        .update(users)
+        .set({ password_hash: hashedPassword })
+        .where(eq(users.id, user.id));
+
+      await tx
+        .delete(passwordResetTokens)
+        .where(eq(passwordResetTokens.id, passToken.id));
+
+      // Invalidate all existing sessions for security
+      await tx.delete(sessions).where(eq(sessions.userId, user.id));
+
+      logger.info("Password reset successfully", { userId: user.id });
+    });
+
     return res
       .status(StatusCodes.OK)
-      .json({ message: "Reset password route reached." });
+      .json({ message: "Password has been reset successfully." });
   },
 
   // just for testing purpose

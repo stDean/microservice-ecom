@@ -20,9 +20,9 @@ router.get(
 );
 router.post("/login", asyncHandler(AuthCtrl.login));
 router.post("/logout", asyncHandler(AuthCtrl.logout));
-// router.post("/refresh-token", asyncHandler(AuthCtrl.refreshToken));
-// router.post("/access-token", asyncHandler(AuthCtrl.accessToken));
-// router.post("/forget-password", asyncHandler(AuthCtrl.forgetPassword));
-// router.post("/reset-password", asyncHandler(AuthCtrl.resetPassword));
+router.post("/refresh-token", asyncHandler(AuthCtrl.refreshToken));
+router.post("/forget-password", asyncHandler(AuthCtrl.forgetPassword));
+router.post("/reseend-reset", asyncHandler(AuthCtrl.resendResetPasswordEmail));
+router.post("/reset-password", asyncHandler(AuthCtrl.resetPassword));
 
 export default router;
