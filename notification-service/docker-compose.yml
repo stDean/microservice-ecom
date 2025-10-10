@@ -1,0 +1,17 @@
+services:
+  notification-service:
+    build: 
+      context: .
+    container_name: notification-service
+    image: notification-service:latest
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+    networks:
+      - notification-network
+
+
+networks:
+  notification-network:
+    driver: bridge

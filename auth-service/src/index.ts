@@ -37,7 +37,6 @@ const startServer = async () => {
     console.log("Database connected successfully");
 
     app.listen(PORT, () => {
-      // Add "0.0.0.0" to listen on all interfaces
       console.log(`Auth service is running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/api/v1/auth/health`);
     });

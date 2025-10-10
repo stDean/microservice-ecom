@@ -1,0 +1,8 @@
+services:
+  notification-service:
+    build: 
+      context: .
+      target: production
+    environment:
+      - PORT=3002
+      - NODE_ENV=development

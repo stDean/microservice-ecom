@@ -11,7 +11,7 @@ RUN npm ci
 
 COPY . .
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "build"]
 
 # -----------------------------------------------------------------------------
 # STAGE 2: PRODUCTION
@@ -28,6 +28,6 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
-EXPOSE 3000
+EXPOSE 3002
 
-CMD ["npm", "run","start"]
+CMD ["npm", "run", "start"]

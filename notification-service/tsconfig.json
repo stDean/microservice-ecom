@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ES2022",                          
+    "lib": ["ES2022", "DOM"],                                       
+
+    /* Modules */
+    "module": "commonjs",                               
+    "rootDir": "./src",                              
+    "moduleResolution": "node",                                           
+    "typeRoots": ["./node_modules/@types", "@types"],    
+
+    /* JavaScript Support */
+    "outDir": "./dist",                     
+
+    /* Interop Constraints */
+    "esModuleInterop": true,                             
+    "forceConsistentCasingInFileNames": true,            
+
+    /* Type Checking */
+    "strict": true,                            
+    "noImplicitAny": true,                           
+    "strictNullChecks": true,                         
+    "strictFunctionTypes": true,
+    "skipLibCheck": true                          
+  },
+  "include": [ "src/**/*", "src/types/**/*.d.ts"],
+  "exclude": [ "node_modules", "dist" ]
+}

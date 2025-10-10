@@ -1,0 +1,9 @@
+services:
+  notification-service:
+    build: 
+      context: .
+      target: builder
+    environment:
+      - PORT=3002
+      - NODE_ENV=development
+    command: ["npm", "run", "dev"]
