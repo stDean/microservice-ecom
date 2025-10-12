@@ -1,53 +1,98 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { emailService } from "../service/emailService";
+import {
+  emailVerificationSchema,
+  passwordResetSchema,
+  type EmailVerificationInput,
+  type PasswordResetInput,
+} from "../validators/emailValidators";
+import { logger } from "../config/logger";
 
 export const NotificationCtrl = {
   sendVerificationEmail: async (req: Request, res: Response) => {
     try {
-      const { email, verificationToken } = req.body;
-      if (!email || !verificationToken) {
-        return res
-          .status(StatusCodes.BAD_REQUEST)
-          .json({ message: "Missing email or verification token." });
+      const validationResult = emailVerificationSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        logger.warn("Email verification request validation failed", {
+          issues: validationResult.error.issues,
+          body: req.body,
+        });
+
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          message: "Invalid request data",
+          errors: validationResult.error.issues.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        });
       }
 
-      // 💡 You should integrate a message queue (e.g., RabbitMQ) here
-      // to handle email sending asynchronously for better performance.
+      const { email, verificationToken }: EmailVerificationInput =
+        validationResult.data;
+
+      logger.info("Sending verification email", { email });
+
       await emailService.sendVerificationEmail(email, verificationToken);
 
-      return res
-        .status(StatusCodes.OK)
-        .send({ message: "Verification email sent." });
+      logger.info("Verification email processed successfully", { email });
+
+      return res.status(StatusCodes.OK).json({
+        message: "Verification email sent successfully.",
+      });
     } catch (error) {
       console.error("Error sending verification email:", error);
-      return res
-        .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .send({ message: "Failed to send verification email." });
+      logger.error("Error in sendVerificationEmail controller", {
+        error: (error as Error).message,
+        stack: (error as Error).stack,
+        body: req.body,
+      });
+
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: "Failed to send verification email.",
+      });
     }
   },
 
   sendPasswordResetEmail: async (req: Request, res: Response) => {
     try {
-      const { email, resetToken } = req.body;
-      if (!email || !resetToken) {
-        return res
-          .status(StatusCodes.BAD_REQUEST)
-          .json({ message: "Missing email or reset token." });
+      const validationResult = passwordResetSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        logger.warn("Password reset request validation failed", {
+          issues: validationResult.error.issues,
+          body: req.body,
+        });
+
+        return res.status(StatusCodes.BAD_REQUEST).json({
+          message: "Invalid request data",
+          errors: validationResult.error.issues.map((issue) => ({
+            field: issue.path.join("."),
+            message: issue.message,
+          })),
+        });
       }
 
-      // 💡 You should integrate a message queue (e.g., RabbitMQ) here
-      // to handle email sending asynchronously for better performance.
+      const { email, resetToken }: PasswordResetInput = validationResult.data;
+
+      logger.info("Sending password reset email", { email });
+
       await emailService.sendPasswordResetEmail(email, resetToken);
 
-      return res
-        .status(StatusCodes.OK)
-        .send({ message: "Password reset email sent." });
+      logger.info("Password reset email processed successfully", { email });
+
+      return res.status(StatusCodes.OK).json({
+        message: "Password reset email sent successfully.",
+      });
     } catch (error) {
-      console.error("Error sending password reset email:", error);
-      return res
-        .status(StatusCodes.INTERNAL_SERVER_ERROR)
-        .send({ message: "Failed to send password reset email." });
+      logger.error("Error in sendPasswordResetEmail controller", {
+        error: (error as Error).message,
+        stack: (error as Error).stack,
+        body: req.body,
+      });
+
+      return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        message: "Failed to send password reset email.",
+      });
     }
   },
 };

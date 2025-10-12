@@ -1,5 +1,6 @@
 import * as nodemailer from "nodemailer";
 import { MailOptions } from "nodemailer/lib/sendmail-transport";
+import { logger } from "./logger";
 
 const transporter = nodemailer.createTransport({
   host: process.env.MAIL_HOST,
@@ -9,18 +10,41 @@ const transporter = nodemailer.createTransport({
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS,
   },
+  pool: true,
+  maxConnections: 5,
+  maxMessages: 100,
 });
 
-export const sendMail = (mailOptions: MailOptions) => {
-  return new Promise((res, rej) => {
+// Verify connection on startup
+transporter.verify((error) => {
+  if (error) {
+    logger.error("Mail transporter verification failed:", error);
+  } else {
+    logger.info("Mail transporter is ready to send messages");
+  }
+});
+
+export const sendMail = (
+  mailOptions: MailOptions
+): Promise<nodemailer.SentMessageInfo> => {
+  return new Promise((resolve, reject) => {
     transporter.sendMail(mailOptions, (error, info) => {
       if (error) {
-        console.error("Error sending email:", error);
-        return rej(error);
+        logger.error("Error sending email:", {
+          error: error.message,
+          to: mailOptions.to,
+          subject: mailOptions.subject,
+        });
+        return reject(error);
       }
 
-      console.log("Email sent:", info.response);
-      res(info);
+      logger.info("Email sent successfully", {
+        messageId: info.messageId,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        response: info.response,
+      });
+      resolve(info);
     });
   });
 };

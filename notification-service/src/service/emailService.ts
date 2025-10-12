@@ -2,13 +2,6 @@ import { sendMail } from "../config/mailer";
 import { logger } from "../config/logger";
 import { emailTemplates } from "../templates/emailTemplates";
 
-/**
- * @title Email Service with Retry Mechanism
- * @author Dean
- * @notice A robust email service that handles sending transactional emails with configurable retry logic
- * @dev Implements exponential backoff retry strategy for handling transient email failures
- */
-
 interface RetryConfig {
   maxAttempts: number;
   delayMs: number;
@@ -25,6 +18,12 @@ const defaultRetryConfig: RetryConfig = {
   backoffMultiplier: 2,
 };
 
+/**
+ * @title Email Service with Retry Mechanism
+ * @author Dean
+ * @notice A robust email service that handles sending transactional emails with configurable retry logic
+ * @dev Implements exponential backoff retry strategy for handling transient email failures
+ */
 class EmailService {
   /**
    * @notice Retries an asynchronous operation with exponential backoff
