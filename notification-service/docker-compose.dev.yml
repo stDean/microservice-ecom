@@ -6,4 +6,42 @@ services:
     environment:
       - PORT=3002
       - NODE_ENV=development
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_SECURE=false
+      - MAIL_USER=
+      - MAIL_PASS=
+      - FRONTEND_URL=http://localhost:3000
+      - LOG_LEVEL=debug
     command: ["npm", "run", "dev"]
+    networks:
+      - dev-network
+    depends_on:
+      - mailhog
+      - rabbitmq
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025" # SMTP server port
+      - "8025:8025" # Web UI port
+    networks:
+      - dev-network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - dev-network
+
+networks:
+  dev-network:
+    driver: bridge

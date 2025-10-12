@@ -33,14 +33,16 @@ export const NotificationCtrl = {
 
       logger.info("Queueing verification email", { email });
 
+      const requestId = req.headers["x-request-id"] || `req_${Date.now()}`;
       // Publish to RabbitMQ instead of sending directly
       await rabbitMQService.publishMessage("verification", {
         id: `verification_${Date.now()}_${Math.random()
           .toString(36)
-          .substr(2, 9)}`,
+          .substring(2, 11)}`,
         email,
         token: verificationToken,
         timestamp: new Date().toISOString(),
+        requestId,
       });
 
       // await emailService.sendVerificationEmail(email, verificationToken);
@@ -50,6 +52,8 @@ export const NotificationCtrl = {
       // Return 202 Accepted since we've queued the request
       return res.status(StatusCodes.ACCEPTED).json({
         message: "Verification email queued for sending.",
+        success: true,
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       logger.error("Error in sendVerificationEmail controller", {
@@ -86,14 +90,16 @@ export const NotificationCtrl = {
 
       logger.info("Queueing password reset email", { email });
 
+      const requestId = req.headers["x-request-id"] || `req_${Date.now()}`;
       // Publish to RabbitMQ instead of sending directly
       await rabbitMQService.publishMessage("password_reset", {
         id: `password_reset_${Date.now()}_${Math.random()
           .toString(36)
-          .substr(2, 9)}`,
+          .substring(2, 11)}`,
         email,
         token: resetToken,
         timestamp: new Date().toISOString(),
+        requestId,
       });
 
       logger.info("Password reset email queued successfully", { email });
@@ -101,6 +107,8 @@ export const NotificationCtrl = {
       // Return 202 Accepted since we've queued the request
       return res.status(StatusCodes.ACCEPTED).json({
         message: "Password reset email queued for sending.",
+        success: true,
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
       logger.error("Error in sendPasswordResetEmail controller", {
