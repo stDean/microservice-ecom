@@ -3,13 +3,14 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
     "start": "node ./dist/index.js",
     "dev": "nodemon ./src/index.ts",
     "docker:dev": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build",
     "docker:down": "docker-compose -f docker-compose.yml -f docker-compose.dev.yml down -v",
-    "docker:build": "docker build -t notification_service ."
+    "docker:build": "docker build -t notification_service .",
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +21,9 @@
     "express": "^5.1.0",
     "http-status-codes": "^2.3.0",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^7.0.9"
+    "nodemailer": "^7.0.9",
+    "winston": "^3.18.3",
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
@@ -29,6 +32,7 @@
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }
