@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { emailService } from "../service/emailService";
 import {
   emailVerificationSchema,
   passwordResetSchema,
@@ -8,6 +7,7 @@ import {
   type PasswordResetInput,
 } from "../validators/emailValidators";
 import { logger } from "../config/logger";
+import { rabbitMQService } from "../config/rabbitmq";
 
 export const NotificationCtrl = {
   sendVerificationEmail: async (req: Request, res: Response) => {
@@ -31,17 +31,27 @@ export const NotificationCtrl = {
       const { email, verificationToken }: EmailVerificationInput =
         validationResult.data;
 
-      logger.info("Sending verification email", { email });
+      logger.info("Queueing verification email", { email });
 
-      await emailService.sendVerificationEmail(email, verificationToken);
+      // Publish to RabbitMQ instead of sending directly
+      await rabbitMQService.publishMessage("verification", {
+        id: `verification_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+        email,
+        token: verificationToken,
+        timestamp: new Date().toISOString(),
+      });
 
-      logger.info("Verification email processed successfully", { email });
+      // await emailService.sendVerificationEmail(email, verificationToken);
 
-      return res.status(StatusCodes.OK).json({
-        message: "Verification email sent successfully.",
+      logger.info("Verification email queued successfully", { email });
+
+      // Return 202 Accepted since we've queued the request
+      return res.status(StatusCodes.ACCEPTED).json({
+        message: "Verification email queued for sending.",
       });
     } catch (error) {
-      console.error("Error sending verification email:", error);
       logger.error("Error in sendVerificationEmail controller", {
         error: (error as Error).message,
         stack: (error as Error).stack,
@@ -74,14 +84,23 @@ export const NotificationCtrl = {
 
       const { email, resetToken }: PasswordResetInput = validationResult.data;
 
-      logger.info("Sending password reset email", { email });
+      logger.info("Queueing password reset email", { email });
 
-      await emailService.sendPasswordResetEmail(email, resetToken);
+      // Publish to RabbitMQ instead of sending directly
+      await rabbitMQService.publishMessage("password_reset", {
+        id: `password_reset_${Date.now()}_${Math.random()
+          .toString(36)
+          .substr(2, 9)}`,
+        email,
+        token: resetToken,
+        timestamp: new Date().toISOString(),
+      });
 
-      logger.info("Password reset email processed successfully", { email });
+      logger.info("Password reset email queued successfully", { email });
 
-      return res.status(StatusCodes.OK).json({
-        message: "Password reset email sent successfully.",
+      // Return 202 Accepted since we've queued the request
+      return res.status(StatusCodes.ACCEPTED).json({
+        message: "Password reset email queued for sending.",
       });
     } catch (error) {
       logger.error("Error in sendPasswordResetEmail controller", {
