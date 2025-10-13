@@ -57,11 +57,36 @@ services:
     container_name: auth_migrate
     build: 
       context: ./auth-service
+      target: builder
+      args:
+        - NODE_ENV=development
     command: ["npm", "run", "db:push"]
     networks:
       - ecom_network
     depends_on:
       auth-db: # Correctly depends on 'auth-db'
+        condition: service_healthy
+
+  # Notification Service
+  notification-service:
+    build: 
+      context: ./notification-service
+    container_name: notification-service
+    image: notification-service:latest
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+    networks:
+      - ecom_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3002,path:'/api/v1/notification/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      auth-service: 
         condition: service_healthy
 
 # --- 2. Networks ---

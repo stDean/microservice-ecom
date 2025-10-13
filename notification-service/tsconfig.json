@@ -6,7 +6,6 @@
 
     /* Modules */
     "module": "commonjs",                               
-    "rootDir": "./src",                              
     "moduleResolution": "node",                                           
     "typeRoots": ["./node_modules/@types", "@types"],    
 
@@ -22,8 +21,15 @@
     "noImplicitAny": true,                           
     "strictNullChecks": true,                         
     "strictFunctionTypes": true,
-    "skipLibCheck": true                          
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }                        
   },
-  "include": [ "src/**/*", "src/types/**/*.d.ts"],
-  "exclude": [ "node_modules", "dist" ]
+  "include": [ "src/**/*", "src/types/**/*.d.ts", "../shared/**/*"],
+  "exclude": [ "node_modules", "dist" ],
+  "ts-node": {
+    "require": ["tsconfig-paths/register"]
+  }
 }

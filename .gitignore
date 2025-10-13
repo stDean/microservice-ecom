@@ -8,3 +8,5 @@
 /notification-service/node_modules
 /notification-service/.env
 /notification-service/.dockerignore
+/shared/node_modules
+/shared/.env

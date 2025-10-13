@@ -6,7 +6,7 @@ services:
     environment:
       - PORT=3002
       - NODE_ENV=production
-       - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_URL=${RABBITMQ_URL}
       - MAIL_HOST=${MAIL_HOST}
       - MAIL_PORT=587
       - MAIL_SECURE=false

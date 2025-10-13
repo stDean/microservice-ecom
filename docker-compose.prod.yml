@@ -43,13 +43,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
     command: ["npm", "run", "start"] # The final production command
 
-  # --- Auth Migration Overrides ---
-  auth-migrate:
-    build:
-      target: production
-      args:
-        - NODE_ENV=production
-
   # --- Database Production Overrides ---
   auth-db:
     environment:
@@ -57,3 +50,21 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+
+  #  --- Notification Production Override ---
+  notification-service:
+    build: 
+      target: production
+      args:
+        - NODE_ENV=production
+    environment:
+      - PORT=3002
+      - NODE_ENV=production
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - MAIL_HOST=${MAIL_HOST}
+      - MAIL_PORT=587
+      - MAIL_SECURE=false
+      - MAIL_USER=${MAIL_USER}
+      - MAIL_PASS=${MAIL_PASS}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - LOG_LEVEL=info

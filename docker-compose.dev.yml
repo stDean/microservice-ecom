@@ -50,13 +50,6 @@ services:
     command: ["npm", "run", "dev"]
     # We remove the healthcheck here as it often gets in the way of rapid development restarts
 
-  # --- Auth Migration Overrides ---
-  auth-migrate:
-    build:
-      target: builder
-      args:
-        - NODE_ENV=development
-
   # --- Database Development Overrides ---
   auth-db:
     environment:
@@ -67,6 +60,54 @@ services:
     # Add a volume for persistent dev data
     volumes:
       - auth_db_data:/var/lib/postgresql/data
+
+  # --- Notification Development Overrides ---
+  notification-service:
+    build: 
+      target: builder
+      args:
+        - NODE_ENV=development
+    environment:
+      - PORT=3002
+      - NODE_ENV=development
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_SECURE=false
+      - MAIL_USER=
+      - MAIL_PASS=
+      - FRONTEND_URL=http://localhost:3000
+      - LOG_LEVEL=debug
+    volumes:
+      - ./notification-service/src:/app/src:ro 
+      - ./notification-service/package.json:/app/package.json:ro
+      - ./notification-service/tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - mailhog
+      - rabbitmq
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    ports:
+      - "1025:1025" # SMTP server port
+      - "8025:8025" # Web UI port
+    networks:
+      - ecom_network
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol port
+      - "15672:15672" # Management UI port
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - ecom_network
 
 # Define volumes for persistent data
 volumes:

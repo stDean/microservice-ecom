@@ -4,6 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import NotificationRouter from "./routes/notification.r";
 import { emailConsumer } from "./consumers/emailConsumer";
 import { rabbitMQService } from "./config/rabbitmq";
+import { redisEventConsumer } from "./consumers/redisEventConsumer";
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -30,10 +31,15 @@ const startServer = async () => {
       );
     });
 
-    // Start the email consumer after server is running
-    console.log("Starting email consumer...");
+    // Start RabbitMQ consumer (processes email queues)
+    console.log("Starting RabbitMQ email consumer...");
     await emailConsumer.start();
-    console.log("Email consumer started successfully");
+
+    // Start Redis event consumer (listens for auth events)
+    console.log("Starting Redis event consumer...");
+    await redisEventConsumer.start();
+
+    console.log("All consumers started successfully");
 
     // Graceful shutdown handling
     const gracefulShutdown = async (signal: string) => {
