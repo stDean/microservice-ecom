@@ -9,7 +9,18 @@ import {
 import { logger } from "../config/logger";
 import { rabbitMQService } from "../config/rabbitmq";
 
+/**
+ * NotificationCtrl - Handles email notification requests
+ * @controller
+ * @description Processes verification and password reset emails via RabbitMQ
+ */
 export const NotificationCtrl = {
+  /**
+   * Sends verification email by queuing to RabbitMQ
+   * @param req Express request with email and verificationToken
+   * @param res Express response
+   * @returns 202 Accepted with success message or error response
+   */
   sendVerificationEmail: async (req: Request, res: Response) => {
     try {
       const validationResult = emailVerificationSchema.safeParse(req.body);
@@ -34,6 +45,7 @@ export const NotificationCtrl = {
       logger.info("Queueing verification email", { email });
 
       const requestId = req.headers["x-request-id"] || `req_${Date.now()}`;
+
       // Publish to RabbitMQ instead of sending directly
       await rabbitMQService.publishMessage("verification", {
         id: `verification_${Date.now()}_${Math.random()
@@ -49,7 +61,6 @@ export const NotificationCtrl = {
 
       logger.info("Verification email queued successfully", { email });
 
-      // Return 202 Accepted since we've queued the request
       return res.status(StatusCodes.ACCEPTED).json({
         message: "Verification email queued for sending.",
         success: true,
@@ -68,6 +79,12 @@ export const NotificationCtrl = {
     }
   },
 
+  /**
+   * Sends password reset email by queuing to RabbitMQ
+   * @param req Express request with email and resetToken
+   * @param res Express response
+   * @returns 202 Accepted with success message or error response
+   */
   sendPasswordResetEmail: async (req: Request, res: Response) => {
     try {
       const validationResult = passwordResetSchema.safeParse(req.body);
@@ -91,6 +108,7 @@ export const NotificationCtrl = {
       logger.info("Queueing password reset email", { email });
 
       const requestId = req.headers["x-request-id"] || `req_${Date.now()}`;
+
       // Publish to RabbitMQ instead of sending directly
       await rabbitMQService.publishMessage("password_reset", {
         id: `password_reset_${Date.now()}_${Math.random()
@@ -104,7 +122,6 @@ export const NotificationCtrl = {
 
       logger.info("Password reset email queued successfully", { email });
 
-      // Return 202 Accepted since we've queued the request
       return res.status(StatusCodes.ACCEPTED).json({
         message: "Password reset email queued for sending.",
         success: true,
