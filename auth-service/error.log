@@ -65,3 +65,10 @@
 {"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-09T14:49:17.430Z"}
 {"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-09T14:49:18.456Z"}
 {"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-09T14:49:19.639Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-14T10:14:58.445Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-14T10:16:30.991Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-14T10:17:36.444Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-14T10:27:28.551Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-14T10:27:45.871Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-14T11:15:38.013Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-14T12:29:28.303Z"}

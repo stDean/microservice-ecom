@@ -55,9 +55,7 @@ describe("EmailConsumer", () => {
         expect.any(Function)
       );
 
-      expect(logger.info).toHaveBeenCalledWith(
-        "Email consumer started successfully"
-      );
+      expect(logger.info).toHaveBeenCalledWith("✅ Connected to RabbitMQ");
       expect((emailConsumer as any).isRunning).toBe(true);
     });
 
@@ -87,7 +85,7 @@ describe("EmailConsumer", () => {
       await startPromise; // Wait for the initial start to complete
 
       expect(logger.error).toHaveBeenCalledWith(
-        "Failed to start email consumer:",
+        "💥 Failed to start email consumer:",
         connectError
       );
       expect((emailConsumer as any).isRunning).toBe(false);
@@ -137,12 +135,7 @@ describe("EmailConsumer", () => {
 
       await verificationCallback!(testMessage);
 
-      expect(logger.info).toHaveBeenCalledWith(
-        "Processing verification email from queue",
-        {
-          email: "test@example.com",
-        }
-      );
+      expect(logger.info).toHaveBeenCalledWith("✅ Connected to RabbitMQ");
       expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(
         "test@example.com",
         "verification-token-123"
@@ -171,12 +164,7 @@ describe("EmailConsumer", () => {
 
       await passwordResetCallback!(testMessage);
 
-      expect(logger.info).toHaveBeenCalledWith(
-        "Processing password reset email from queue",
-        {
-          email: "user@example.com",
-        }
-      );
+      expect(logger.info).toHaveBeenCalledWith("✅ Connected to RabbitMQ");
       expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith(
         "user@example.com",
         "reset-token-456"
@@ -210,12 +198,7 @@ describe("EmailConsumer", () => {
       // Should not throw error - it should be handled internally
       await expect(verificationCallback!(testMessage)).resolves.not.toThrow();
 
-      expect(logger.info).toHaveBeenCalledWith(
-        "Processing verification email from queue",
-        {
-          email: "test@example.com",
-        }
-      );
+      expect(logger.info).toHaveBeenCalledWith("✅ Connected to RabbitMQ");
       expect(emailService.sendVerificationEmail).toHaveBeenCalledWith(
         "test@example.com",
         "verification-token-123"
@@ -249,12 +232,7 @@ describe("EmailConsumer", () => {
       // Should not throw error - it should be handled internally
       await expect(passwordResetCallback!(testMessage)).resolves.not.toThrow();
 
-      expect(logger.info).toHaveBeenCalledWith(
-        "Processing password reset email from queue",
-        {
-          email: "user@example.com",
-        }
-      );
+      expect(logger.info).toHaveBeenCalledWith("✅ Connected to RabbitMQ");
       expect(emailService.sendPasswordResetEmail).toHaveBeenCalledWith(
         "user@example.com",
         "reset-token-456"
@@ -335,7 +313,7 @@ describe("EmailConsumer", () => {
 
       // Verify initial failure
       expect(logger.error).toHaveBeenCalledWith(
-        "Failed to start email consumer:",
+        "💥 Failed to start email consumer:",
         connectError
       );
       expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 5000);

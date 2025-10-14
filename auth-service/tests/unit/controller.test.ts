@@ -15,6 +15,7 @@ import {
   generateAuthTokens,
   generateVerificationToken,
 } from "../../src/utils/tokenGeneration";
+import { eventPublisher } from "../../src/events/publisher";
 
 // Mock dependencies
 vi.mock("../../src/db", () => {
@@ -67,6 +68,14 @@ vi.mock("../../src/db/schema", () => ({
   verificationTokens: {},
   passwordResetTokens: {},
   sessions: {},
+}));
+
+vi.mock("../../src/events/publisher", () => ({
+  eventPublisher: {
+    publishUserRegistered: vi.fn().mockResolvedValue(undefined),
+    publishPasswordReset: vi.fn().mockResolvedValue(undefined),
+    publishEvent: vi.fn().mockResolvedValue(undefined),
+  },
 }));
 
 describe("AuthController", () => {

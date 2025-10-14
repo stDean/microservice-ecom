@@ -1,12 +1,21 @@
-// notification-service/src/consumers/redisEventConsumer.ts
 import { logger } from "../config/logger";
 import { rabbitMQService } from "../config/rabbitmq";
 import { eventSubscriber } from "../events/subscriber";
 import { PasswordResetEvent, UserRegisteredEvent } from "../events/types";
 
+/**
+ * @title Redis Event Consumer
+ * @notice Consumes Redis events and forwards to RabbitMQ for email processing
+ * @dev Listens for auth service events and transforms them into email tasks
+ */
 export class RedisEventConsumer {
   private isRunning: boolean = false;
 
+  /**
+   * @notice Starts the Redis event consumer
+   * @dev Subscribes to USER_REGISTERED and PASSWORD_RESET_REQUESTED events
+   * @throws Error if subscription fails
+   */
   async start(): Promise<void> {
     if (this.isRunning) {
       logger.warn("Redis event consumer is already running");
@@ -32,6 +41,11 @@ export class RedisEventConsumer {
     }
   }
 
+  /**
+   * @notice Processes user registration events for welcome emails
+   * @dev Validates verification token and queues welcome email task
+   * @param event User registration event with verification details
+   */
   private async handleUserRegistered(event: UserRegisteredEvent) {
     try {
       logger.info("📧 Received USER_REGISTERED event", {
@@ -71,6 +85,11 @@ export class RedisEventConsumer {
     }
   }
 
+  /**
+   * @notice Processes password reset events for reset emails
+   * @dev Queues password reset email task with token and expiration
+   * @param event Password reset event with reset details
+   */
   private async handlePasswordReset(event: PasswordResetEvent) {
     try {
       logger.info("📧 Received PASSWORD_RESET_REQUESTED event", {
@@ -98,10 +117,18 @@ export class RedisEventConsumer {
     }
   }
 
+  /**
+   * @notice Stops the Redis event consumer
+   * @dev Sets running flag to false, allowing graceful shutdown
+   */
   async stop(): Promise<void> {
     this.isRunning = false;
     logger.info("Redis event consumer stopped");
   }
 }
 
+/**
+ * @notice Singleton instance of RedisEventConsumer
+ * @dev Pre-configured consumer for application-wide use
+ */
 export const redisEventConsumer = new RedisEventConsumer();
