@@ -10,3 +10,4 @@
 /notification-service/.dockerignore
 /shared/node_modules
 /shared/.env
+/user-service/node_modules

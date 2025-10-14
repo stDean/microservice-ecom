@@ -796,15 +796,11 @@ app.use(
   "/notification",
   createServiceProxy(SERVICES.notification, "notification")
 );
-
-// Body parsing middleware
-// app.use(express.json({ limit: "10mb" }));
-// app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-// app.use(
-//   "/users",
-//   authenticateToken,
-//   createServiceProxy(SERVICES.users, "users")
-// );
+app.use(
+  "/users",
+  authenticateToken,
+  createServiceProxy(SERVICES.users, "users")
+);
 
 // =============================================================================
 // HEALTH CHECK ENDPOINTS
