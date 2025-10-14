@@ -223,6 +223,17 @@ export const AuthCtrl = {
       await tx
         .delete(verificationTokens)
         .where(eq(verificationTokens.id, token.id));
+
+      await eventPublisher.publishEvent({
+        type: "EMAIL_VERIFIED",
+        source: "auth-service",
+        timestamp: new Date(),
+        version: "1.0.0",
+        data: {
+          email: user.email,
+          userId: user.id,
+        },
+      });
     });
 
     logger.info("Email verified successfully", { token: verificationToken });

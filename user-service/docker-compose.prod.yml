@@ -9,5 +9,6 @@ services:
       - MONGO_IP=${MONGO_IP}
       - MONGO_PORT=${MONGO_PORT}
       - NODE_ENV=production
+      - REDIS_URL=${REDIS_URL}
     command: ["npm", "run", "start"]
 
