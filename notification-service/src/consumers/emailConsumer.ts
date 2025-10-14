@@ -34,6 +34,7 @@ class EmailConsumer {
 
     try {
       await rabbitMQService.connect();
+      logger.info("✅ Connected to RabbitMQ");
 
       // Start consuming verification emails
       await rabbitMQService.consumeMessages(
@@ -41,6 +42,8 @@ class EmailConsumer {
         async (message) => {
           logger.info("Processing verification email from queue", {
             email: message.email,
+            queue: "email_verification",
+            messageId: message.id,
           });
 
           try {
@@ -48,8 +51,13 @@ class EmailConsumer {
               message.email,
               message.token
             );
+            logger.info("✅ Verification email sent successfully", {
+              email: message.email,
+            });
           } catch (error) {
-            logger.error("Failed to send verification email:", error);
+            logger.error("❌ Failed to send verification email:", error, {
+              email: message.email,
+            });
           }
         }
       );
@@ -58,8 +66,10 @@ class EmailConsumer {
       await rabbitMQService.consumeMessages(
         "password_reset",
         async (message) => {
-          logger.info("Processing password reset email from queue", {
+          logger.info("📨 Processing password reset email from queue", {
             email: message.email,
+            queue: "password_reset",
+            messageId: message.id,
           });
 
           try {
@@ -67,8 +77,14 @@ class EmailConsumer {
               message.email,
               message.token
             );
+
+            logger.info("✅ Password reset email sent successfully", {
+              email: message.email,
+            });
           } catch (error) {
-            logger.error("Failed to send password reset email:", error);
+            logger.error("❌ Failed to send password reset email:", error, {
+              email: message.email,
+            });
           }
         }
       );
@@ -76,9 +92,11 @@ class EmailConsumer {
       this.isRunning = true;
       this.starting = false;
 
-      logger.info("Email consumer started successfully");
+      logger.info(
+        "🚀 Email consumer started successfully and listening for messages"
+      );
     } catch (error) {
-      logger.error("Failed to start email consumer:", error);
+      logger.error("💥 Failed to start email consumer:", error);
       this.isRunning = false;
       this.starting = false;
 

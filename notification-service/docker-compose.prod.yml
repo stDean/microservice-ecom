@@ -14,3 +14,4 @@ services:
       - MAIL_PASS=${MAIL_PASS}
       - FRONTEND_URL=${FRONTEND_URL}
       - LOG_LEVEL=info
+      - REDIS_URL=${REDIS_URL}

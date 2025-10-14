@@ -10,6 +10,13 @@ services:
       - PORT=3002
     networks:
       - notification-network
+    depends_on:
+      - redis
+  
+  redis:
+    image: redis
+    networks:
+      - notification-network
 
 networks:
   notification-network:

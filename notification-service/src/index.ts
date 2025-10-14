@@ -5,6 +5,7 @@ import NotificationRouter from "./routes/notification.r";
 import { emailConsumer } from "./consumers/emailConsumer";
 import { rabbitMQService } from "./config/rabbitmq";
 import { redisEventConsumer } from "./consumers/redisEventConsumer";
+import RedisService from "./events/client";
 
 const app = express();
 const PORT = process.env.PORT || 3002;
@@ -22,6 +23,8 @@ app.get("/api/v1/notification/health", (req, res) => {
 
 app.use("/api/v1/notification", NotificationRouter);
 
+const redisService = RedisService.getInstance();
+
 const startServer = async () => {
   try {
     const server = app.listen(PORT, () => {
@@ -30,6 +33,18 @@ const startServer = async () => {
         `Health check: http://localhost:${PORT}/api/v1/notification/health`
       );
     });
+
+    redisService
+      .connect()
+      .then(() => {
+        console.log("✅ Notification Service Redis connected");
+      })
+      .catch((error) => {
+        console.error(
+          "❌ Notification Service Redis connection failed:",
+          error
+        );
+      });
 
     // Start RabbitMQ consumer (processes email queues)
     console.log("Starting RabbitMQ email consumer...");

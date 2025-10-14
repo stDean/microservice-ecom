@@ -1,10 +1,10 @@
 import RedisService from "./client";
 import {
-  AppEvent,
   BaseEvent,
   PasswordResetEvent,
+  UserLoggedInEvent,
   UserRegisteredEvent,
-} from "../events/types";
+} from "./types";
 
 export class EventPublisher {
   private redis: RedisService;
@@ -26,7 +26,6 @@ export class EventPublisher {
     }
   }
 
-  // Convenience methods for common events
   async publishUserRegistered(
     data: UserRegisteredEvent["data"]
   ): Promise<void> {
@@ -48,29 +47,16 @@ export class EventPublisher {
       data,
     } as PasswordResetEvent);
   }
-}
 
-export class EventSubscriber {
-  private redis: RedisService;
-
-  constructor() {
-    this.redis = RedisService.getInstance();
-  }
-
-  async subscribeToEvent(
-    eventType: string,
-    handler: (event: AppEvent) => void
-  ): Promise<void> {
-    await this.redis.subscribe(eventType, handler);
-    console.log(`👂 Subscribed to event: ${eventType}`);
-  }
-
-  async unsubscribeFromEvent(eventType: string): Promise<void> {
-    await this.redis.unsubscribe(eventType);
-    console.log(`🚫 Unsubscribed from event: ${eventType}`);
+  async publishUserLoggedIn(data: UserLoggedInEvent["data"]): Promise<void> {
+    await this.publishEvent({
+      type: "USER_LOGGED_IN",
+      source: "auth-service",
+      timestamp: new Date(),
+      version: "1.0.0",
+      data,
+    } as UserLoggedInEvent);
   }
 }
 
-// Export singleton instances
 export const eventPublisher = new EventPublisher();
-export const eventSubscriber = new EventSubscriber();

@@ -10,6 +10,7 @@
     "typeRoots": ["./node_modules/@types", "@types"],    
 
     /* JavaScript Support */
+    "rootDir": "./src",
     "outDir": "./dist",                     
 
     /* Interop Constraints */
@@ -21,8 +22,8 @@
     "noImplicitAny": true,                           
     "strictNullChecks": true,                         
     "strictFunctionTypes": true,
-    "skipLibCheck": true                     
+    "skipLibCheck": true,            
   },
-  "include": ["src/**/*", "../shared/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"],
 }

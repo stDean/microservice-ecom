@@ -1,4 +1,3 @@
-// Base event interface
 export interface BaseEvent {
   type: string;
   source: string;
@@ -6,7 +5,6 @@ export interface BaseEvent {
   version: string;
 }
 
-// Auth events
 export interface UserRegisteredEvent extends BaseEvent {
   type: "USER_REGISTERED";
   data: {
@@ -35,19 +33,7 @@ export interface UserLoggedInEvent extends BaseEvent {
   };
 }
 
-// Notification events (if other services need to trigger notifications)
-export interface NotificationEvent extends BaseEvent {
-  type: "NOTIFICATION_SENT";
-  data: {
-    userId: string;
-    type: "EMAIL" | "SMS" | "PUSH";
-    status: "SENT" | "FAILED";
-  };
-}
-
-// Union type for all events
-export type AppEvent =
+export type NotificationEvent =
   | UserRegisteredEvent
   | PasswordResetEvent
-  | UserLoggedInEvent
-  | NotificationEvent;
+  | UserLoggedInEvent;

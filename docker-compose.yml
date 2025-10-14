@@ -1,5 +1,9 @@
 # --- 1. Service Definitions ---
 services:
+  redis:
+    image: redis
+    networks:
+      - ecom_network
   # The public entry point for the entire application
   api-gateway:
     container_name: api_gateway
@@ -14,6 +18,8 @@ services:
     depends_on:
       auth-service:
         condition: service_healthy # This now works because auth-service has a healthcheck
+      notification-service:
+        condition: service_healthy
 
   # Authentication Service
   auth-service:
@@ -22,7 +28,7 @@ services:
       context: ./auth-service
     image: auth_service_image:1.0
     expose:
-      - "3001" # Only expose internally to the network
+      - "3001:3001" # Only expose internally to the network
     networks:
       - ecom_network
     restart: always
@@ -36,6 +42,8 @@ services:
     depends_on:
       auth-migrate:
         condition: service_completed_successfully
+      redis:
+        condition: service_started
 
   # PostgreSQL Database for Authentication
   auth-db:
@@ -88,6 +96,8 @@ services:
     depends_on:
       auth-service: 
         condition: service_healthy
+      redis:
+        condition: service_started
 
 # --- 2. Networks ---
 networks:

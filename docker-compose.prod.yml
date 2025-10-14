@@ -41,6 +41,7 @@ services:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=${POSTGRES_DB}
+      - REDIS_URL=${REDIS_URL}
     command: ["npm", "run", "start"] # The final production command
 
   # --- Database Production Overrides ---
@@ -68,3 +69,4 @@ services:
       - MAIL_PASS=${MAIL_PASS}
       - FRONTEND_URL=${FRONTEND_URL}
       - LOG_LEVEL=info
+      - REDIS_URL=${REDIS_URL}

@@ -18,9 +18,12 @@ const transporter = nodemailer.createTransport({
 // Verify connection on startup
 transporter.verify((error) => {
   if (error) {
-    logger.error("Mail transporter verification failed:", error);
+    logger.error("❌ Mail transporter verification failed:", error);
   } else {
-    logger.info("Mail transporter is ready to send messages");
+    logger.info("✅ Mail transporter is ready to send emails", {
+      host: process.env.MAIL_HOST,
+      port: process.env.MAIL_PORT,
+    });
   }
 });
 

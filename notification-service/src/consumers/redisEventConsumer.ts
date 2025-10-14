@@ -1,8 +1,8 @@
 // notification-service/src/consumers/redisEventConsumer.ts
-import { eventSubscriber } from "../../../shared/redis/pubsub";
-import { AppEvent } from "../../../shared/events/types";
-import { rabbitMQService } from "../config/rabbitmq";
 import { logger } from "../config/logger";
+import { rabbitMQService } from "../config/rabbitmq";
+import { eventSubscriber } from "../events/subscriber";
+import { PasswordResetEvent, UserRegisteredEvent } from "../events/types";
 
 export class RedisEventConsumer {
   private isRunning: boolean = false;
@@ -15,29 +15,41 @@ export class RedisEventConsumer {
 
     try {
       // Subscribe to Redis events
-      await eventSubscriber.subscribeToEvent(
-        "USER_REGISTERED",
-        this.handleUserRegistered
+      await eventSubscriber.subscribeToEvent("USER_REGISTERED", (event) =>
+        this.handleUserRegistered(event as UserRegisteredEvent)
       );
+
       await eventSubscriber.subscribeToEvent(
         "PASSWORD_RESET_REQUESTED",
-        this.handlePasswordReset
+        (event) => this.handlePasswordReset(event as PasswordResetEvent)
       );
 
       this.isRunning = true;
-      logger.info("Redis event consumer started successfully");
+      logger.info("Redis event consumer started successfully!");
     } catch (error) {
       logger.error("Failed to start Redis event consumer:", error);
-      // Retry logic if needed
+      throw error;
     }
   }
 
-  private async handleUserRegistered(event: AppEvent) {
-    if (event.type === "USER_REGISTERED") {
-      console.log("📧 Received USER_REGISTERED event, queuing welcome email");
+  private async handleUserRegistered(event: UserRegisteredEvent) {
+    try {
+      logger.info("📧 Received USER_REGISTERED event", {
+        userId: event.data.userId,
+        email: event.data.email,
+      });
+
+      // Validate required data
+      if (!event.data.verificationToken) {
+        logger.warn(
+          "Missing verificationToken in USER_REGISTERED event",
+          event.data
+        );
+        return;
+      }
 
       // PUBLISH to RabbitMQ queue
-      await rabbitMQService.publishMessage("email_verification", {
+      await rabbitMQService.publishMessage("verification", {
         id: `welcome_${Date.now()}`,
         email: event.data.email,
         token: event.data.verificationToken, // Make sure auth service sends this
@@ -49,14 +61,21 @@ export class RedisEventConsumer {
         timestamp: new Date().toISOString(),
         requestId: `redis_${Date.now()}`,
       });
+
+      logger.info("✅ Welcome email queued for user", {
+        email: event.data.email,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process USER_REGISTERED event:", error);
+      // Consider adding retry logic or dead letter queue
     }
   }
 
-  private async handlePasswordReset(event: AppEvent) {
-    if (event.type === "PASSWORD_RESET_REQUESTED") {
-      console.log(
-        "📧 Received PASSWORD_RESET_REQUESTED event, queuing reset email"
-      );
+  private async handlePasswordReset(event: PasswordResetEvent) {
+    try {
+      logger.info("📧 Received PASSWORD_RESET_REQUESTED event", {
+        email: event.data.email,
+      });
 
       // PUBLISH to RabbitMQ queue
       await rabbitMQService.publishMessage("password_reset", {
@@ -70,6 +89,12 @@ export class RedisEventConsumer {
         timestamp: new Date().toISOString(),
         requestId: `redis_${Date.now()}`,
       });
+
+      logger.info("✅ Password reset email queued", {
+        email: event.data.email,
+      });
+    } catch (error) {
+      logger.error("Error stopping Redis event consumer:", error);
     }
   }
 

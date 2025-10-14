@@ -10,7 +10,8 @@
     "typeRoots": ["./node_modules/@types", "@types"],    
 
     /* JavaScript Support */
-    "outDir": "./dist",                     
+    "outDir": "./dist",  
+    "rootDir": "./src",                   
 
     /* Interop Constraints */
     "esModuleInterop": true,                             
@@ -21,15 +22,8 @@
     "noImplicitAny": true,                           
     "strictNullChecks": true,                         
     "strictFunctionTypes": true,
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["../shared/*"]
-    }                        
+    "skipLibCheck": true,                       
   },
-  "include": [ "src/**/*", "src/types/**/*.d.ts", "../shared/**/*"],
-  "exclude": [ "node_modules", "dist" ],
-  "ts-node": {
-    "require": ["tsconfig-paths/register"]
-  }
+  "include": [ "src/**/*", "src/types/**/*.d.ts"],
+  "exclude": [ "node_modules", "dist" ]
 }

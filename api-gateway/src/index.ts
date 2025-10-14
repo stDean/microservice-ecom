@@ -52,7 +52,7 @@ const PORT = process.env.PORT || 3000;
  * @interface ServiceConfig
  * @notice Configuration mapping for microservices
  * @dev Maps service names to their respective URLs
- * @example { auth: "http://localhost:3001", users: "http://localhost:3002" }
+ * @example { auth: "http://localhost:3001" }
  */
 interface ServiceConfig {
   [key: string]: string;
@@ -123,9 +123,10 @@ interface CircuitBreakerState {
  */
 const SERVICES: ServiceConfig = {
   auth: process.env.AUTH_SERVICE_URL!,
-  users: process.env.USER_SERVICE_URL || "http://localhost:3002",
-  products: process.env.PRODUCT_SERVICE_URL || "http://localhost:3003",
+  notification: process.env.NOTIFICATION_SERVICE_URL!,
 };
+
+console.log("🔧 Service Configuration:", SERVICES);
 
 /**
  * @constant JWT_SECRET
@@ -143,8 +144,7 @@ const JWT_SECRET =
  */
 const SERVICE_TIMEOUTS: { [key: string]: number } = {
   auth: 10000, // 10 seconds
-  users: 15000, // 15 seconds
-  products: 20000, // 20 seconds
+  notification: 15000, // 15 seconds
 };
 
 /**
@@ -381,11 +381,10 @@ const morganFormat =
  * @param next - Express next function
  *
  * @workflow
- * 1. Skip authentication for public routes (health, auth endpoints)
- * 2. Extract JWT token from Authorization header
- * 3. Verify token using JWT_SECRET
- * 4. Attach decoded user payload to request object
- * 5. Continue to next middleware or return 401/403 on failure
+ * 1. Extract JWT token from Authorization header
+ * 2. Verify token using JWT_SECRET
+ * 3. Attach decoded user payload to request object
+ * 4. Continue to next middleware or return 401/403 on failure
  *
  * @security
  * - Uses HS256 algorithm for JWT verification
@@ -399,15 +398,6 @@ const authenticateToken = (
 ) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
-
-  // Skip authentication for public routes
-  const publicRoutes = ["/health", "/health/detailed", "/favicon.ico"];
-
-  const isPublicRoute = publicRoutes.some((route) => req.path === route);
-
-  if (isPublicRoute) {
-    return next();
-  }
 
   if (!token) {
     logger.warn("Authentication failed: No token provided", req.requestId, {
@@ -642,7 +632,6 @@ const createRateLimit = (windowMs: number, max: number) =>
 // =============================================================================
 // MIDDLEWARE SETUP
 // =============================================================================
-
 // Security headers using Helmet with CSP configuration
 app.use(
   helmet({
@@ -685,12 +674,8 @@ app.use(
   })
 );
 
-// Body parsing middleware
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true, limit: "10mb" }));
-
-// Apply different rate limits based on routes
-app.use("/auth", createRateLimit(15 * 60 * 1000, 5)); // 5 attempts per 15min for auth
+// TODO:Apply different rate limits based on routes
+// app.use("/auth", createRateLimit(15 * 60 * 1000, 5)); // 5 attempts per 15min for auth
 
 // =============================================================================
 // AUTHENTICATION & VALIDATION MIDDLEWARE
@@ -729,8 +714,11 @@ const createServiceProxy = (serviceUrl: string, serviceName: string) => {
     pathRewrite: (path, req) => {
       const newPath = `/api/v1/${serviceName}${path}`;
       console.log(`[DEBUG] Rewriting ${path} to ${newPath}`);
+      console.log(`[DEBUG] Full target URL will be: ${serviceUrl}${newPath}`);
       return newPath;
     },
+    timeout: SERVICE_TIMEOUTS[serviceName] || 30000,
+    proxyTimeout: SERVICE_TIMEOUTS[serviceName] || 30000,
     onProxyReq: (proxyReq: ClientRequest, req: AuthenticatedRequest) => {
       const requestId = req.requestId;
 
@@ -804,6 +792,19 @@ const createServiceProxy = (serviceUrl: string, serviceName: string) => {
  * @route /auth -> Auth Service
  */
 app.use("/auth", createServiceProxy(SERVICES.auth, "auth"));
+app.use(
+  "/notification",
+  createServiceProxy(SERVICES.notification, "notification")
+);
+
+// Body parsing middleware
+// app.use(express.json({ limit: "10mb" }));
+// app.use(express.urlencoded({ extended: true, limit: "10mb" }));
+// app.use(
+//   "/users",
+//   authenticateToken,
+//   createServiceProxy(SERVICES.users, "users")
+// );
 
 // =============================================================================
 // HEALTH CHECK ENDPOINTS
@@ -868,6 +869,12 @@ app.get(
       serviceStatus: {},
     };
 
+    // Define health check endpoints for each service
+    const healthEndpoints: { [key: string]: string } = {
+      auth: "/api/v1/auth/health",
+      notification: "/api/v1/notification/health",
+    };
+
     // Check each microservice health
     const healthChecks = Object.entries(SERVICES).map(
       async ([service, url]) => {
@@ -875,7 +882,8 @@ app.get(
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-          const response = await fetch(`${url}/health`, {
+          const healthEndpoint = healthEndpoints[service] || "/health";
+          const response = await fetch(`${url}${healthEndpoint}`, {
             signal: controller.signal,
             headers: { "X-Request-Id": requestId || uuidv4() },
           });
@@ -885,15 +893,18 @@ app.get(
           if (response.ok) {
             healthCheck.serviceStatus![service] = "HEALTHY";
           } else {
-            healthCheck.serviceStatus![service] = "UNHEALTHY";
+            healthCheck.serviceStatus![
+              service
+            ] = `UNHEALTHY (${response.status})`;
             healthCheck.status = "DEGRADED";
           }
         } catch (error) {
           healthCheck.serviceStatus![service] = "UNREACHABLE";
           healthCheck.status = "DEGRADED";
           logger.warn(`Service health check failed: ${service}`, requestId, {
-            error,
+            error: error instanceof Error ? error.message : String(error),
             service,
+            url: `${url}${healthEndpoints[service] || "/health"}`,
           });
         }
       }

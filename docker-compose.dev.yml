@@ -8,24 +8,15 @@ services:
     environment:
       - NODE_ENV=development
       - JWT_SECRET=dev-jwt-secret-change-in-production
-      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:3002
       - PORT=3000
-      - AUTH_SERVICE_URL=http://auth_service:3001
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3002
     # Mount volumes for hot-reloading
     volumes:
       - ./api-gateway:/app
       - /app/node_modules
     command: npm run dev
-    develop:
-      # Use the watch configuration from your individual file
-      watch:
-        - action: sync
-          path: ./api-gateway/src
-          target: /app/src
-          ignore:
-            - node_modules/
-        - action: rebuild
-          path: package.json
 
   # --- Auth Service Development Overrides ---
   auth-service:
@@ -41,6 +32,7 @@ services:
       POSTGRES_PASSWORD: example
       POSTGRES_USER: user
       POSTGRES_DB: auth_db
+      REDIS_URL: redis://redis:6379
     # Mount volumes for hot-reloading
     volumes:
       - ./auth-service/src:/app/src:ro
@@ -78,6 +70,7 @@ services:
       - MAIL_PASS=
       - FRONTEND_URL=http://localhost:3000
       - LOG_LEVEL=debug
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./notification-service/src:/app/src:ro 
       - ./notification-service/package.json:/app/package.json:ro

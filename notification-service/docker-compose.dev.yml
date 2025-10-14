@@ -14,6 +14,7 @@ services:
       - MAIL_PASS=
       - FRONTEND_URL=http://localhost:3000
       - LOG_LEVEL=debug
+      - REDIS_URL=redis://redis:6379
     volumes:
       - ./src:/app/src:ro
       - ./package.json:/app/package.json:ro

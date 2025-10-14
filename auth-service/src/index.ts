@@ -5,6 +5,7 @@ import cookieParser from "cookie-parser";
 import db from "./db/index";
 import AuthRoute from "./route/auth.r";
 import { errorHandlerMiddleware } from "./middleware/errorHandling.m";
+import RedisService from "./events/client";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -29,6 +30,8 @@ app.use("/api/v1/auth", AuthRoute);
 // ERROR HANDLING MIDDLEWARE
 app.use(errorHandlerMiddleware);
 
+const redisService = RedisService.getInstance();
+
 // START THE SERVER
 const startServer = async () => {
   try {
@@ -40,6 +43,15 @@ const startServer = async () => {
       console.log(`Auth service is running on port ${PORT}`);
       console.log(`Health check: http://localhost:${PORT}/api/v1/auth/health`);
     });
+
+    redisService
+      .connect()
+      .then(() => {
+        console.log("✅ Auth Service Redis connected");
+      })
+      .catch((error) => {
+        console.error("❌ Auth Service Redis connection failed:", error);
+      });
   } catch (error) {
     console.error("Failed to connect to Drizzle MySQL database:", error);
     console.error("Error starting the server:", error);

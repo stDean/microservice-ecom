@@ -18,7 +18,7 @@ import {
   generateAuthTokens,
   generateVerificationToken,
 } from "../utils/tokenGeneration";
-import { eventPublisher } from "../../../shared/redis/pubsub";
+import { eventPublisher } from "../events/publisher";
 
 export const AuthCtrl = {
   /**
@@ -91,7 +91,7 @@ export const AuthCtrl = {
       userId: newUser.id,
       email: newUser.email,
       name: newUser.name!,
-      verificationToken: token
+      verificationToken: token,
     });
 
     // Send verification email (in real app)
@@ -150,6 +150,14 @@ export const AuthCtrl = {
         userId: user.id,
         email: user.email,
       });
+
+      await eventPublisher.publishUserRegistered({
+        userId: user.id,
+        email: user.email,
+        name: user.name!,
+        verificationToken: verificationToken,
+      });
+
       // Send verification email (in real app)
       console.log(`Verification resent to: ${user.email}`);
       console.log(`New verification token: ${verificationToken}`);
@@ -580,6 +588,12 @@ export const AuthCtrl = {
       });
 
       logger.info("Password reset email resent", { userId: user.id });
+
+      await eventPublisher.publishPasswordReset({
+        email: req.body.email,
+        resetToken: token,
+        expiresAt: expiresAt,
+      });
 
       console.log(`Password reset resent to: ${user.email}`);
       console.log(`New password reset token: ${token}`);
