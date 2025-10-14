@@ -1,0 +1,33 @@
+services:
+  user-service:
+    build: 
+      context: .
+    image: user_service_image:1.0
+    container_name: user_service:latest
+    ports:
+      - "3003:3003"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/api/v1/users/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      user-db:
+        condition: service_completed_successfully
+    networks:
+      - user-network
+
+  user-db:
+    image: mongo
+    networks:
+      - user-network
+
+  user-cache:
+    image: redis
+    networks:
+      - user-network
+
+networks:
+  user-network:
+    driver: bridge

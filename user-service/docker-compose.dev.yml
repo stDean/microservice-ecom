@@ -1,0 +1,25 @@
+services:
+   user-service:
+    build: 
+      context: .
+      target: builder
+    environment:
+      - MONGO_USER=root
+      - MONGO_PASSWORD=example
+      - NODE_ENV=development
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "start"]
+
+   user-db:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - user-db:/data/db
+        
+volumes:
+  user-db:

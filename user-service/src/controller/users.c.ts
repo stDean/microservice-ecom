@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import { logger } from "../utils/logger";
+import { redisClient } from "../db/redis"; // for caching
 
 // Extend the Request interface to include the user property
 declare global {

@@ -1,0 +1,13 @@
+services:
+   user-service:
+    build: 
+      context: .
+      target: production
+    environment:
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_IP=${MONGO_IP}
+      - MONGO_PORT=${MONGO_PORT}
+      - NODE_ENV=production
+    command: ["npm", "run", "start"]
+
