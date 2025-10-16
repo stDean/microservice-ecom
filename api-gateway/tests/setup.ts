@@ -1,11 +1,13 @@
-import { beforeAll, afterAll, afterEach } from "vitest";
-import { server } from "./mocks/server";
+import { vi } from "vitest";
 
-// Start mock server before all tests
-beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+// Mock environment variables
+process.env.JWT_SECRET = "test-secret";
 
-// Close mock server after all tests
-afterAll(() => server.close());
-
-// Reset handlers after each test
-afterEach(() => server.resetHandlers());
+// Global mocks
+vi.mock("../src/utils/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
+}));

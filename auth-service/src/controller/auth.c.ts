@@ -1,9 +1,8 @@
 import bcrypt from "bcrypt";
-import { eq } from "drizzle-orm";
-import { Request, Response } from "express";
-import { StatusCodes } from "http-status-codes";
 import crypto from "crypto";
-import { CookieOptions } from "express"; // ADD THIS IMPORT
+import { eq } from "drizzle-orm";
+import { CookieOptions, Request, Response } from "express";
+import { StatusCodes } from "http-status-codes";
 import db from "../db";
 import {
   passwordResetTokens,
@@ -12,37 +11,24 @@ import {
   verificationTokens,
 } from "../db/schema";
 import { BadRequestError, NotFoundError } from "../errors";
-import { isValidEmail } from "../utils/helpers";
+import { eventPublisher } from "../events/publisher";
 import logger from "../utils/logger";
 import {
   generateAuthTokens,
   generateVerificationToken,
 } from "../utils/tokenGeneration";
-import { eventPublisher } from "../events/publisher";
 
 export const AuthCtrl = {
   /**
    * @notice Register a new user with email verification
    * @dev Creates user account, hashes password, generates verification token
-   * @param req.body.email User's email address
-   * @param req.body.password User's password (min 8 chars)
-   * @param req.body.name User's display name (optional)
+   * @param req.body.email User's email address (validated by gateway)
+   * @param req.body.password User's password (validated by gateway)
+   * @param req.body.name User's display name (validated by gateway)
+   * @param req.body.role User's role (validated by gateway)
    */
   register: async (req: Request, res: Response) => {
-    const { email, password, name } = req.body;
-    if (!email || !password) {
-      throw new BadRequestError("Email and password are required");
-    }
-
-    // Validate email format
-    if (!isValidEmail(email)) {
-      throw new BadRequestError("Invalid email format");
-    }
-
-    // Validate password strength
-    if (password.length < 8) {
-      throw new BadRequestError("Password must be at least 8 characters long");
-    }
+    const { email, password, name, role } = req.body;
 
     // Use transaction to ensure atomicity
     const { newUser, token } = await db.transaction(async (tx) => {
@@ -65,8 +51,9 @@ export const AuthCtrl = {
           email,
           password_hash: hashedPassword,
           name,
-          emailVerified: false, // Explicitly set to false
+          emailVerified: false,
           lastLoginAt: null,
+          role: role || "customer",
         })
         .returning();
 
@@ -86,7 +73,7 @@ export const AuthCtrl = {
       email: newUser.email,
     });
 
-    // publishing an event that the notification service will listen for
+    // Publish event for notification service
     await eventPublisher.publishUserRegistered({
       userId: newUser.id,
       email: newUser.email,
@@ -94,25 +81,18 @@ export const AuthCtrl = {
       verificationToken: token,
     });
 
-    // Send verification email (in real app)
-    console.log(`Verification email would be sent to: ${newUser.email}`);
-    console.log(`Verification token: ${token}`);
-
-    res
-      .status(StatusCodes.CREATED)
-      .json({ message: "Registration successful. Please check your email." });
+    res.status(StatusCodes.CREATED).json({
+      message: "Registration successful. Please check your email.",
+    });
   },
 
   /**
    * @notice Resend email verification link
    * @dev Generates new verification token, invalidates old ones
-   * @param req.body.email User's email address
+   * @param req.body.email User's email address (validated by gateway)
    */
   resendVerificationEmail: async (req: Request, res: Response) => {
     const { email } = req.body;
-    if (!email || !isValidEmail(email)) {
-      throw new BadRequestError("A valid email is required.");
-    }
 
     const [user] = await db
       .select()
@@ -157,13 +137,8 @@ export const AuthCtrl = {
         name: user.name!,
         verificationToken: verificationToken,
       });
-
-      // Send verification email (in real app)
-      console.log(`Verification resent to: ${user.email}`);
-      console.log(`New verification token: ${verificationToken}`);
     });
 
-    // 4. Send success response
     res.status(StatusCodes.OK).json({
       message: "A new verification link has been sent to your email.",
     });
@@ -172,15 +147,11 @@ export const AuthCtrl = {
   /**
    * @notice Verify user's email using token
    * @dev Validates token, marks email as verified, cleans up used token
-   * @param req.query.token Email verification token from link
+   * @param req.query.token Email verification token from link (validated by gateway)
    */
   verifyEmail: async (req: Request, res: Response) => {
     const verificationToken = req.query.token as string;
-    if (!verificationToken) {
-      throw new BadRequestError("Verification token is required");
-    }
 
-    // Use transaction for atomic operations
     await db.transaction(async (tx) => {
       // Get token and user in single query using join
       const tokenWithUser = await tx
@@ -238,7 +209,7 @@ export const AuthCtrl = {
 
     logger.info("Email verified successfully", { token: verificationToken });
 
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       message: "Email verified successfully.",
     });
   },
@@ -246,14 +217,11 @@ export const AuthCtrl = {
   /**
    * @notice Authenticate user and create session
    * @dev Validates credentials, creates access/refresh tokens, sets HTTP-only cookie
-   * @param req.body.email User's email address
-   * @param req.body.password User's password
+   * @param req.body.email User's email address (validated by gateway)
+   * @param req.body.password User's password (validated by gateway)
    */
   login: async (req: Request, res: Response) => {
     const { email, password } = req.body;
-    if (!email || !password) {
-      throw new BadRequestError("Email and password are required");
-    }
 
     const userResult = await db
       .select()
@@ -308,20 +276,20 @@ export const AuthCtrl = {
     });
 
     const cookieOptions: CookieOptions = {
-      httpOnly: true, // Prevents client-side JavaScript access
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      expires: refreshTokenExpiresAt, // Automatic expiration
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax", // CSRF protection
-      path: "/", // Cookie accessible across entire site
-      domain: process.env.COOKIE_DOMAIN, // Cross-subdomain sharing (optional)
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      expires: refreshTokenExpiresAt,
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      path: "/",
+      domain: process.env.COOKIE_DOMAIN,
     };
 
     res.cookie("refreshToken", refreshToken, cookieOptions);
-    res.cookie("sessionId", sessionId, cookieOptions); // Add session ID
+    res.cookie("sessionId", sessionId, cookieOptions);
 
     logger.info("User logged in successfully", { userId: user.id });
 
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       message: "Login successful",
       accessToken,
       user: {
@@ -371,9 +339,8 @@ export const AuthCtrl = {
   },
 
   /**
-   * @notice Terminate user session using session ID
-   * @dev Deletes session by ID from database, clears authentication cookies.
-   * @param req.cookies.sessionId Session identifier for direct database lookup
+   * @notice Refresh access token using session ID
+   * @dev Validates session by ID, rotates refresh token
    */
   refreshToken: async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
@@ -383,7 +350,6 @@ export const AuthCtrl = {
       throw new BadRequestError("Refresh token and session ID required");
     }
 
-    // Define clear cookie options once
     const clearCookieOptions: CookieOptions = {
       path: "/",
       domain: process.env.COOKIE_DOMAIN,
@@ -474,7 +440,7 @@ export const AuthCtrl = {
         return { accessToken, newRefreshToken, refreshTokenExpiresAt, user };
       });
 
-    // Set new refresh token in cookie (sessionId remains the same)
+    // Set new refresh token in cookie
     const cookieOptions: CookieOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -488,7 +454,7 @@ export const AuthCtrl = {
 
     logger.info("Access token refreshed successfully", { userId: user.id });
 
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       message: "Access token refreshed successfully",
       accessToken,
       user: {
@@ -503,15 +469,11 @@ export const AuthCtrl = {
   /**
    * @notice Initiate password reset process
    * @dev Generates reset token, sends email (prevents email enumeration)
-   * @param req.body.email User's email address
+   * @param req.body.email User's email address (validated by gateway)
    */
   forgetPassword: async (req: Request, res: Response) => {
     const { email } = req.body;
-    if (!email || !isValidEmail(email)) {
-      throw new BadRequestError("A valid email is required.");
-    }
 
-    // Use transaction for consistency
     await db.transaction(async (tx) => {
       const existingUser = await tx
         .select()
@@ -542,19 +504,15 @@ export const AuthCtrl = {
         userId: existingUser[0].id,
       });
 
-      // publishing an event that the notification service will listen for
       await eventPublisher.publishPasswordReset({
-        email: req.body.email,
+        email: email,
         resetToken: token,
         expiresAt: expiresAt,
       });
-
-      console.log(`Password reset email would be sent to: ${email}`);
-      console.log(`Password reset token: ${token}`);
     });
 
     // Always return success to prevent email enumeration
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       message: "If an account exists, a password reset link has been sent.",
     });
   },
@@ -562,13 +520,10 @@ export const AuthCtrl = {
   /**
    * @notice Resend password reset email
    * @dev Generates new reset token, invalidates previous tokens
-   * @param req.body.email User's email address
+   * @param req.body.email User's email address (validated by gateway)
    */
   resendResetPasswordEmail: async (req: Request, res: Response) => {
     const { email } = req.body;
-    if (!email || !isValidEmail(email)) {
-      throw new BadRequestError("A valid email is required.");
-    }
 
     const userResult = await db
       .select()
@@ -601,16 +556,13 @@ export const AuthCtrl = {
       logger.info("Password reset email resent", { userId: user.id });
 
       await eventPublisher.publishPasswordReset({
-        email: req.body.email,
+        email: email,
         resetToken: token,
         expiresAt: expiresAt,
       });
-
-      console.log(`Password reset resent to: ${user.email}`);
-      console.log(`New password reset token: ${token}`);
     });
 
-    return res.status(StatusCodes.OK).json({
+    res.status(StatusCodes.OK).json({
       message: "A new password reset link has been sent to your email.",
     });
   },
@@ -618,20 +570,14 @@ export const AuthCtrl = {
   /**
    * @notice Reset user password using valid token
    * @dev Validates reset token, hashes new password, invalidates all sessions
-   * @param req.query.token Password reset token from email
-   * @param req.body.newPassword New password (min 8 chars)
+   * @param req.query.token Password reset token from email (validated by gateway)
+   * @param req.body.newPassword New password (validated by gateway)
    */
   resetPassword: async (req: Request, res: Response) => {
     const { token } = req.query;
     const { newPassword } = req.body;
-    if (!token || typeof token !== "string") {
-      throw new BadRequestError("Reset token is required.");
-    }
-    if (!newPassword || newPassword.length < 8) {
-      throw new BadRequestError(
-        "New password must be at least 8 characters long."
-      );
-    }
+
+    // ✅ Data already validated by gateway - trust it!
 
     await db.transaction(async (tx) => {
       const passTokenWithUser = await tx
@@ -640,7 +586,7 @@ export const AuthCtrl = {
           user: users,
         })
         .from(passwordResetTokens)
-        .where(eq(passwordResetTokens.token, token))
+        .where(eq(passwordResetTokens.token, token as string))
         .innerJoin(users, eq(users.id, passwordResetTokens.userId))
         .limit(1);
 
@@ -673,9 +619,9 @@ export const AuthCtrl = {
       logger.info("Password reset successfully", { userId: user.id });
     });
 
-    return res
-      .status(StatusCodes.OK)
-      .json({ message: "Password has been reset successfully." });
+    res.status(StatusCodes.OK).json({
+      message: "Password has been reset successfully.",
+    });
   },
 
   // just for testing purpose

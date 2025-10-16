@@ -3,26 +3,15 @@ import { StatusCodes } from "http-status-codes";
 import { logger } from "../utils/logger";
 import { User } from "../db/schema/user.s";
 import RedisService from "../redis/client";
+import { UnauthenticatedError } from "../errors";
 
 const redis = RedisService.getInstance();
-
-// Extend the Request interface to include the user property
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        email: string;
-        role: string;
-      };
-    }
-  }
-}
 
 // NOTE: the req.user is coming from the authenticateToken in the api-gateway
 export const UserCtrl = {
   // USER MANAGEMENT PROFILE
   getAuthUser: async (req: Request, res: Response) => {
+    console.log(req.user);
     if (!req.user) {
       return res
         .status(StatusCodes.UNAUTHORIZED)
@@ -95,15 +84,15 @@ export const UserCtrl = {
 
   // ADMIN ONLY
   getUsers: async (req: Request, res: Response) => {
-    //ADMIN ONLY
     if (!req.user) {
-      return res
-        .status(StatusCodes.UNAUTHORIZED)
-        .json({ message: "User Not Authenticated" });
+      throw new UnauthenticatedError("User is not authenticated.");
     }
 
-    const { id, email, role } = req.user;
-    return res.status(StatusCodes.OK).json({ message: "All Users." });
+    const users = await User.find({});
+
+    return res
+      .status(StatusCodes.OK)
+      .json({ users, message: "Users found", nbHits: users.length });
   },
 
   getUserById: async (req: Request, res: Response) => {

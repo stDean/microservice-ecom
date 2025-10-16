@@ -7,6 +7,7 @@ import { config } from "./utils/config";
 import ErrorHandlerMiddleware from "./middleware/errorHandling.m";
 import RedisService from "./redis/client";
 import { redisEventConsumer } from "./consumer/redisConsumer";
+import { logger } from "./utils/logger";
 
 const app = express();
 const PORT = process.env.PORT || 3003;
@@ -34,29 +35,38 @@ const startServer = async () => {
     await connectDB(
       `mongodb://${config.MONGO_USER}:${config.MONGO_PASSWORD}@${config.MONGO_IP}:${config.MONGO_PORT}/?authSource=admin`
     );
+    logger.info("✅ User Service Database connected");
 
     redisService
       .connect()
       .then(() => {
-        console.log("✅ Notification Service Redis connected");
+        logger.info("✅ User Service Redis connected");
       })
       .catch((error) => {
-        console.error(
-          "❌ Notification Service Redis connection failed:",
-          error
-        );
+        logger.error("❌ Notification Service Redis connection failed:", error);
       });
 
-    console.log("Starting Redis event consumer...");
     await redisEventConsumer.start();
+    logger.info("Redis event consumer started");
 
     app.listen(PORT, () => {
-      console.log(`User service is running on port ${PORT}`);
+      logger.info(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error("Error starting the server:", error);
+    logger.error("Failed to start server:", error);
     process.exit(1); // Exit the process with a failure code
   }
 };
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  logger.info("SIGTERM received, shutting down gracefully");
+  await redisEventConsumer.stop();
+
+  const redis = RedisService.getInstance();
+  await redis.disconnect();
+
+  process.exit(0);
+});
 
 startServer();

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import cookieParser from "cookie-parser";
 import db from "./db/index";
@@ -11,6 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // MIDDLEWARE
+
 app.use(express.json());
 app.use(cookieParser());
 

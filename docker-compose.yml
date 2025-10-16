@@ -20,6 +20,8 @@ services:
         condition: service_healthy # This now works because auth-service has a healthcheck
       notification-service:
         condition: service_healthy
+      user-service:
+        condition: service_healthy
 
   # Authentication Service
   auth-service:
@@ -98,6 +100,34 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+
+  user-service:
+    build:
+      context: ./user-service
+    container_name: user_service
+    image: user_service_image:latest
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+    networks:
+      - ecom_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3003,path:'/api/v1/users/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      user-db:
+        condition: service_started
+      redis:
+        condition: service_started
+  
+  user-db:
+    image: mongo
+    networks:
+      - ecom_network
 
 # --- 2. Networks ---
 networks:

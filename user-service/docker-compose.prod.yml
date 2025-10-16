@@ -12,3 +12,8 @@ services:
       - REDIS_URL=${REDIS_URL}
     command: ["npm", "run", "start"]
 
+   user-db:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+

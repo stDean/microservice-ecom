@@ -4,7 +4,7 @@ import bcrypt from "bcrypt"; // Added bcrypt import
 
 // --- Configuration ---
 // NOTE: In a real application, these should be loaded from environment variables (.env)
-const JWT_SECRET = "YOUR_SUPER_SECRET_JWT_KEY";
+const JWT_SECRET = process.env.JWT_SECRET || "YOUR_SUPER_SECRET_JWT_KEY";
 const ACCESS_TOKEN_EXPIRY = "15m"; // Short-lived
 const REFRESH_TOKEN_EXPIRY_MS = 1000 * 60 * 60 * 24 * 7; // 7 days in milliseconds
 const VERIFICATION_TOKEN_EXPIRY_MS = 1000 * 60 * 10; // 10 minutes in milliseconds

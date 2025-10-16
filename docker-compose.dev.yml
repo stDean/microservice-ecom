@@ -12,6 +12,7 @@ services:
       - PORT=3000
       - AUTH_SERVICE_URL=http://auth-service:3001
       - NOTIFICATION_SERVICE_URL=http://notification-service:3002
+      - USER_SERVICE_URL=http://user-service:3003
     # Mount volumes for hot-reloading
     volumes:
       - ./api-gateway:/app
@@ -33,6 +34,7 @@ services:
       POSTGRES_USER: user
       POSTGRES_DB: auth_db
       REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-jwt-secret-change-in-production
     # Mount volumes for hot-reloading
     volumes:
       - ./auth-service/src:/app/src:ro
@@ -102,6 +104,36 @@ services:
     networks:
       - ecom_network
 
+ # --- User Service Development Overrides ---
+  user-service:
+    build:
+      target: builder
+      args:
+        - NODE_ENV=development
+    environment:
+      - PORT=3003
+      - MONGO_USER=root
+      - MONGO_PASSWORD=example
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./user-service/src:/app/src:ro
+      - ./user-service/package.json:/app/package.json:ro
+      - ./user-service/tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - user-db
+    
+  user-db:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - user_db_data:/data/db
+
 # Define volumes for persistent data
 volumes:
   auth_db_data:
+  user_db_data:
+
