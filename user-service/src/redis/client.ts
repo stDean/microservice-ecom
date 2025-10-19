@@ -10,6 +10,7 @@ class RedisService {
   private client: RedisClientType;
   private subscriber: RedisClientType;
   private isConnected: boolean = false;
+  private publisher: RedisClientType;
 
   /**
    * @notice Private constructor for singleton pattern
@@ -22,6 +23,8 @@ class RedisService {
     });
 
     this.subscriber = this.client.duplicate();
+
+    this.publisher = this.client.duplicate();
 
     this.setupEventListeners();
   }
@@ -57,6 +60,10 @@ class RedisService {
     this.subscriber.on("error", (err) =>
       console.error("Redis Subscriber Error", err)
     );
+
+    this.publisher.on("error", (err) =>
+      console.error("Redis Publisher Error", err)
+    );
   }
 
   /**
@@ -67,6 +74,7 @@ class RedisService {
     if (!this.client.isOpen) {
       await this.client.connect();
       await this.subscriber.connect();
+      await this.publisher.connect();
       this.isConnected = true;
     }
   }
@@ -226,6 +234,16 @@ class RedisService {
   }
 
   /**
+   * @notice Publishes message to Redis channel
+   * @dev Automatically serializes message to JSON string
+   * @param channel Redis channel name to publish to
+   * @param message Data to publish (will be JSON stringified)
+   */
+  async publish(channel: string, message: any): Promise<void> {
+    await this.publisher.publish(channel, JSON.stringify(message));
+  }
+
+  /**
    * @notice Gracefully disconnects from Redis server
    * @dev Destroys both subscriber and client connections
    */
@@ -233,6 +251,7 @@ class RedisService {
     this.isConnected = false;
     await this.subscriber.quit();
     await this.client.quit();
+    await this.publisher.quit();
   }
 
   /**

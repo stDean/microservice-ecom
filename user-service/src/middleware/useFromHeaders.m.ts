@@ -9,6 +9,12 @@ declare global {
         email: string;
         role: string;
       };
+      validatedQuery?: {
+        page: number;
+        limit: number;
+        skip: number;
+        fields: string;
+      };
     }
   }
 }

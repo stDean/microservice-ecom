@@ -202,6 +202,100 @@ app.use(validateRequest);
 // ROUTE CONFIGURATION
 // =============================================================================
 
+const debugTokenCheck = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  console.log("🔍 [TOKEN DEBUG]", {
+    method: req.method,
+    path: req.path,
+    query: req.query,
+    hasQueryToken: !!req.query.token,
+    authHeader: req.headers.authorization ? "Present" : "Missing",
+    queryToken: req.query.token
+      ? `Present (${req.query.token.length} chars)`
+      : "Missing",
+  });
+
+  // Public routes that don't require any token check
+  const publicNoTokenRoutes = [
+    "/register",
+    "/login",
+    "/forget-password",
+    "/reset-password",
+    "/resend-verification",
+    "/resend-reset-password",
+  ];
+
+  // Public routes that require token in query
+  const publicQueryTokenRoutes = ["/verify-email"];
+
+  // Protected routes that require token in header
+  const protectedHeaderTokenRoutes = [
+    "/profile",
+    "/change-password",
+    "/logout",
+    "/refresh-token",
+  ];
+
+  const isPublicNoToken = publicNoTokenRoutes.some((route) =>
+    req.path.includes(route)
+  );
+  const isPublicQueryToken = publicQueryTokenRoutes.some((route) =>
+    req.path.includes(route)
+  );
+  const isProtected = protectedHeaderTokenRoutes.some((route) =>
+    req.path.includes(route)
+  );
+
+  console.log("🔍 [ROUTE TYPE]", {
+    isPublicNoToken,
+    isPublicQueryToken,
+    isProtected,
+  });
+
+  // Handle public routes that don't need tokens
+  if (isPublicNoToken) {
+    console.log("✅ [PUBLIC] No token required");
+    return next();
+  }
+
+  // Handle public routes that need query tokens
+  if (isPublicQueryToken) {
+    const token = req.query.token as string;
+    if (!token) {
+      console.log("❌ [QUERY TOKEN MISSING]");
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        error: "Token is required in query parameters",
+        correlationId: req.requestId,
+      });
+    }
+    console.log("✅ [QUERY TOKEN OK]");
+    return next();
+  }
+
+  // Handle protected routes that need header tokens
+  if (isProtected) {
+    const authHeader = req.headers["authorization"];
+    const token = authHeader && authHeader.split(" ")[1];
+
+    if (!token) {
+      console.log("❌ [HEADER TOKEN MISSING]");
+      return res.status(StatusCodes.UNAUTHORIZED).json({
+        error: "Authentication token required",
+        correlationId: req.requestId,
+      });
+    }
+    console.log("✅ [HEADER TOKEN OK]");
+    return next();
+  }
+
+  // Default: allow if no specific rule matches
+  console.log("⚠️ [DEFAULT] No specific rule, allowing");
+  next();
+};
+
 app.get("/circuit-status", (req: Request, res: Response) => {
   res.json({
     circuitBreakers,

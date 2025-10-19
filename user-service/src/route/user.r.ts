@@ -3,6 +3,7 @@ import { UserCtrl } from "../controller/users.c";
 import { adminOnly } from "../middleware/admin.m";
 import { asyncHandler } from "../middleware/asyncHandler.m";
 import { userFromHeaders } from "../middleware/useFromHeaders.m";
+import { validateUserQuery } from "../middleware/validateQuery.m";
 
 const router = Router();
 
@@ -27,7 +28,11 @@ router
   .delete(asyncHandler(UserCtrl.deleteAddress));
 
 // ADMIN ONLY ROUTES
-router.route("/").get(asyncHandler(UserCtrl.getUsers));
-router.route("/:userId").get(asyncHandler(UserCtrl.getUserById));
+router
+  .route("/")
+  .get(/* adminOnly */ validateUserQuery, asyncHandler(UserCtrl.getUsers));
+router
+  .route("/:userId")
+  .get(/* adminOnly */ asyncHandler(UserCtrl.getUserById));
 
 export default router;

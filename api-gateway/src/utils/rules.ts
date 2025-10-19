@@ -10,6 +10,7 @@ import {
   addressIdParamsSchema,
   onlyEmailSchema,
   onlyTokenSchema,
+  resetPasswordSchema,
 } from "./validationSchemas";
 
 export interface ValidationRules {
@@ -27,7 +28,7 @@ export const validationRules: ValidationRules = {
 
   "/auth/resend-verification": { POST: { body: onlyEmailSchema } },
 
-  "/auth/verify-token": { GET: { query: onlyTokenSchema } },
+  "/auth/verify-email": { GET: { query: onlyTokenSchema } },
 
   "/auth/login": { POST: { body: logInUserSchema } },
 
@@ -36,7 +37,7 @@ export const validationRules: ValidationRules = {
   "/auth/resend-reset": { POST: { body: onlyEmailSchema } },
 
   "/auth/reset-password": {
-    POST: { body: onlyEmailSchema, query: onlyTokenSchema },
+    POST: { body: resetPasswordSchema, query: onlyTokenSchema },
   },
 
   "/users": { GET: { query: userQuerySchema } },

@@ -34,7 +34,14 @@ export interface UserLoggedInEvent extends BaseEvent {
   };
 }
 
+export interface UserDeletedEvent extends BaseEvent {
+  type: "USER_DELETED";
+  data: { userId: string; email: string };
+}
+
 export type AuthEvent =
   | UserRegisteredEvent
   | PasswordResetEvent
   | UserLoggedInEvent;
+
+export type UserEvent = UserDeletedEvent;

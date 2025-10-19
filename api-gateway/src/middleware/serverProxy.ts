@@ -63,10 +63,22 @@ export const createServiceProxy = (serviceUrl: string, serviceName: string) => {
       `${serviceUrl}/api/v1/${serviceName}${req.path === "/" ? "" : req.path}`
     );
 
+    Object.entries(req.query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.append(key, value.toString());
+      }
+    });
+
     const isHttps = url.protocol === "https:";
     const client = isHttps ? https : http;
 
-    // Convert port to number if it exists and is numeric
+    console.log("🔍 [PROXY URL]", {
+      originalPath: req.path,
+      originalQuery: req.query,
+      finalUrl: url.toString(),
+      searchParams: url.searchParams.toString(),
+    });
+
     const port = url.port ? parseInt(url.port, 10) : isHttps ? 443 : 80;
 
     const options = {

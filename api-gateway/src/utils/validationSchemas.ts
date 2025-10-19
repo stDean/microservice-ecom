@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { optional, z } from "zod";
 
 // Auth Schema
 export const createUserSchema = z.object({
@@ -18,7 +18,11 @@ export const onlyEmailSchema = z.object({
 });
 
 export const onlyTokenSchema = z.object({
-  token: z.string("Invalid or expired token."),
+  token: z.string().min(1, "Token is required"),
+});
+
+export const resetPasswordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 // User schemas
@@ -65,6 +69,8 @@ export const userQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   limit: z.coerce.number().min(1).max(100).default(10),
   search: z.string().max(100).optional(),
+  sort: z.string().max(100).optional(),
+  fields: z.string().optional(),
 });
 
 export const userIdParamsSchema = z.object({

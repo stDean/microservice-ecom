@@ -6,6 +6,8 @@ import db from "./db/index";
 import AuthRoute from "./route/auth.r";
 import { errorHandlerMiddleware } from "./middleware/errorHandling.m";
 import RedisService from "./events/client";
+import { redisEventConsumer } from "./consumer/redisConsumer";
+import logger from "./utils/logger";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -40,11 +42,6 @@ const startServer = async () => {
     await db.execute("SELECT 1"); // or use your database's connection method (e.g. authenticate())
     console.log("Database connected successfully");
 
-    app.listen(PORT, () => {
-      console.log(`Auth service is running on port ${PORT}`);
-      console.log(`Health check: http://localhost:${PORT}/api/v1/auth/health`);
-    });
-
     redisService
       .connect()
       .then(() => {
@@ -53,6 +50,14 @@ const startServer = async () => {
       .catch((error) => {
         console.error("❌ Auth Service Redis connection failed:", error);
       });
+
+    await redisEventConsumer.start();
+    logger.info("Redis event consumer started");
+
+    app.listen(PORT, () => {
+      console.log(`Auth service is running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/api/v1/auth/health`);
+    });
   } catch (error) {
     console.error("Failed to connect to Drizzle MySQL database:", error);
     console.error("Error starting the server:", error);

@@ -9,6 +9,7 @@ class RedisService {
   private static instance: RedisService;
   private client: RedisClientType;
   private publisher: RedisClientType;
+  private subscriber: RedisClientType;
 
   /**
    * @notice Private constructor for singleton pattern
@@ -20,6 +21,7 @@ class RedisService {
     });
 
     this.publisher = this.client.duplicate();
+    this.subscriber = this.client.duplicate();
 
     this.setupEventListeners();
   }
@@ -45,6 +47,9 @@ class RedisService {
     this.publisher.on("error", (err) =>
       console.error("Redis Publisher Error", err)
     );
+    this.subscriber.on("error", (err) =>
+      console.error("Redis Publisher Error", err)
+    );
   }
 
   /**
@@ -55,6 +60,7 @@ class RedisService {
     if (!this.client.isOpen) {
       await this.client.connect();
       await this.publisher.connect();
+      await this.subscriber.connect();
     }
   }
 
@@ -69,12 +75,41 @@ class RedisService {
   }
 
   /**
+   * @notice Subscribes to Redis channel with message handler
+   * @dev Automatically parses JSON messages and handles parse errors
+   * @param channel Redis channel name to subscribe to
+   * @param callback Function to handle incoming messages
+   */
+  async subscribe(
+    channel: string,
+    callback: (message: any) => void
+  ): Promise<void> {
+    await this.subscriber.subscribe(channel, (message) => {
+      try {
+        const parsedMessage = JSON.parse(message);
+        callback(parsedMessage);
+      } catch (error) {
+        console.error("Error parsing message:", error);
+      }
+    });
+  }
+
+  /**
+   * @notice Unsubscribes from Redis channel
+   * @param channel Redis channel name to unsubscribe from
+   */
+  async unsubscribe(channel: string): Promise<void> {
+    await this.subscriber.unsubscribe(channel);
+  }
+
+  /**
    * @notice Gracefully disconnects from Redis server
    * @dev Destroys both publisher and client connections
    */
   async disconnect(): Promise<void> {
-    await this.publisher.destroy();
-    await this.client.destroy();
+    await this.publisher.quit();
+    await this.client.quit();
+    await this.subscriber.quit();
   }
 }
 
