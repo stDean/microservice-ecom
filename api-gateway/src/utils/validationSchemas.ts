@@ -2,19 +2,19 @@ import { optional, z } from "zod";
 
 // Auth Schema
 export const createUserSchema = z.object({
-  email: z.email("Invalid email format"),
+  email: z.string().email("Invalid email format"),
   name: z.string().min(1, "Name is required").max(50, "Name too long"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   role: z.enum(["customer", "admin"]).default("customer"),
 });
 
 export const logInUserSchema = z.object({
-  email: z.email("Invalid email format"),
+  email: z.string().email("Invalid email format"),
   password: z.string().min(1, "Password is required"),
 });
 
 export const onlyEmailSchema = z.object({
-  email: z.email("Email is required"),
+  email: z.string().email("Email is required"),
 });
 
 export const onlyTokenSchema = z.object({
@@ -64,19 +64,169 @@ export const updateAddressSchema = z
   })
   .strict();
 
+// Common schemas
+export const uuidSchema = z.string().uuid("Invalid UUID format");
+export const slugSchema = z
+  .string()
+  .min(1)
+  .max(255)
+  .regex(
+    /^[a-z0-9-]+$/,
+    "Slug can only contain lowercase letters, numbers, and hyphens"
+  );
+
+// Category schemas
+export const createCategorySchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(100, "Name too long"),
+    slug: slugSchema,
+    description: z.string().max(500).optional(),
+    isActive: z.boolean().default(true),
+    sortOrder: z.number().int().min(0).max(1000).default(0),
+  })
+  .strict();
+
+export const updateCategorySchema = z
+  .object({
+    name: z.string().min(1).max(100).optional(),
+    slug: slugSchema.optional(),
+    description: z.string().max(500).optional(),
+    isActive: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).max(1000).optional(),
+  })
+  .strict();
+
+// Bulk operation schemas
+export const bulkDeleteSchema = z
+  .object({
+    ids: z
+      .array(uuidSchema)
+      .min(1)
+      .max(100, "Cannot process more than 100 items at once"),
+    hardDelete: z.boolean().default(false),
+  })
+  .strict();
+
+export const bulkUpdateSchema = z
+  .object({
+    ids: z
+      .array(uuidSchema)
+      .min(1)
+      .max(100, "Cannot process more than 100 items at once"),
+    data: updateCategorySchema, // Reuse the update schema for consistency
+  })
+  .strict();
+
+export const bulkRestoreSchema = z
+  .object({
+    ids: z
+      .array(uuidSchema)
+      .min(1)
+      .max(100, "Cannot process more than 100 items at once"),
+  })
+  .strict();
+
+// Product schemas
+export const createProductSchema = z
+  .object({
+    name: z.string().min(1, "Name is required").max(200, "Name too long"),
+    slug: slugSchema,
+    description: z.string().max(2000).optional(),
+    price: z.number().min(0, "Price must be positive").max(999999.99),
+    comparePrice: z.number().min(0).max(999999.99).optional(),
+    stock: z.number().int().min(0, "Stock cannot be negative").default(0),
+    isActive: z.boolean().default(true),
+    isFeatured: z.boolean().default(false),
+    categoryId: uuidSchema.optional(),
+    images: z.array(z.string().url("Invalid image URL")).max(10).optional(),
+  })
+  .strict();
+
+export const updateProductSchema = z
+  .object({
+    name: z.string().min(1).max(200).optional(),
+    slug: slugSchema.optional(),
+    description: z.string().max(2000).optional(),
+    price: z.number().min(0).max(999999.99).optional(),
+    comparePrice: z.number().min(0).max(999999.99).optional(),
+    stock: z.number().int().min(0).optional(),
+    isActive: z.boolean().optional(),
+    isFeatured: z.boolean().optional(),
+    categoryId: uuidSchema.optional().nullable(),
+    images: z.array(z.string().url()).max(10).optional(),
+  })
+  .strict();
+
+// Product Variant schemas
+export const createProductVariantSchema = z
+  .object({
+    size: z.string().max(50).optional(),
+    color: z.string().max(50).optional(),
+    price: z.number().min(0).max(999999.99).optional(),
+    stock: z.number().int().min(0).default(0),
+    sku: z.string().min(1, "SKU is required").max(100),
+  })
+  .strict();
+
+export const updateProductVariantSchema = z
+  .object({
+    size: z.string().max(50).optional().nullable(),
+    color: z.string().max(50).optional().nullable(),
+    price: z.number().min(0).max(999999.99).optional(),
+    stock: z.number().int().min(0).optional(),
+    sku: z.string().min(1).max(100).optional(),
+  })
+  .strict();
+
 // Query schemas
-export const userQuerySchema = z.object({
-  page: z.coerce.number().min(1).default(1),
-  limit: z.coerce.number().min(1).max(100).default(10),
+export const paginationQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().max(100).optional(),
   sort: z.string().max(100).optional(),
+});
+
+export const userQuerySchema = paginationQuerySchema.extend({
   fields: z.string().optional(),
 });
 
+export const productQuerySchema = paginationQuerySchema.extend({
+  category: uuidSchema.optional(),
+  featured: z.coerce.boolean().optional(),
+  active: z.coerce.boolean().optional(),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
+});
+
+export const categoryQuerySchema = paginationQuerySchema.extend({
+  active: z.coerce.boolean().optional(),
+});
+
+// Params schemas
 export const userIdParamsSchema = z.object({
   userId: z.string().min(1, "User ID is required"),
 });
 
 export const addressIdParamsSchema = z.object({
   addressId: z.string().min(1, "Address ID is required"),
+});
+
+export const idParamsSchema = z.object({
+  id: uuidSchema,
+});
+
+export const slugParamsSchema = z.object({
+  slug: slugSchema,
+});
+
+export const skuParamsSchema = z.object({
+  sku: z.string().min(1, "SKU is required"),
+});
+
+export const productIdParamsSchema = z.object({
+  productId: uuidSchema,
+});
+
+export const categoryIdParamsSchema = z.object({
+  categoryId: uuidSchema,
 });

@@ -22,6 +22,7 @@ export const categories = pgTable(
     isActive: boolean("is_active").default(true).notNull(), // Whether the category is visible to customers
     sortOrder: integer("sort_order").default(0), // Controls display order (lower numbers appear first)
     createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("categories_slug_idx").on(table.slug),
