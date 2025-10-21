@@ -8,6 +8,8 @@
 /notification-service/node_modules
 /notification-service/.env
 /notification-service/.dockerignore
-/shared/node_modules
-/shared/.env
 /user-service/node_modules
+/user-service/.dockerignore
+/product-catalog-service/.env
+/product-catalog-service/.dockerignore
+/product-catalog-service/node_modules

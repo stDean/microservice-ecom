@@ -1,0 +1,30 @@
+services:
+  product-service:
+    build: 
+      target: builder
+      args:
+        - NODE_ENV=development
+    environment:
+      PORT: 3004
+      NODE_ENV: development
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: product_db
+      REDIS_URL: redis://product-redis:6379
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+  auth-db:
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: product_db
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+
+volumes:
+  product-db-data:

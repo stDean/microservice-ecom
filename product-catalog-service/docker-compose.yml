@@ -1,0 +1,58 @@
+services:
+  product-service:
+    build: 
+      context: .
+    image: product_service_image:1.0
+    container_name: product_service:latest
+    ports:
+      - "3004:3004"
+    networks:
+      - prod-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/api/v1/productCatalog/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      product-redis:
+        condition: service_completed_successfully
+      product-migrate:
+        condition: service_completed_successfully
+
+  product-redis:
+    image: redis
+    networks:
+      - user-network
+
+  product-db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    networks:
+      - prod-network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d product_db}"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  product-migrate:
+    build: 
+      context: .
+      args:
+        - NODE_ENV=development
+      target: builder
+    command: ["npm", "run", "db:push"]
+    networks:
+      - prod-network
+    depends_on:
+      product-db: 
+        condition: service_healthy
+
+
+networks:
+  prod-network:
+    driver: bridge
