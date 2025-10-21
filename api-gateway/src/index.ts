@@ -25,6 +25,7 @@ import helmet from "helmet";
 import { StatusCodes } from "http-status-codes";
 import morgan from "morgan";
 import { v4 as uuidv4 } from "uuid";
+import cookieParser from "cookie-parser";
 import {
   circuitBreakerCheck,
   circuitBreakers,
@@ -134,22 +135,6 @@ const requestIdMiddleware = (
   next();
 };
 
-const setProxyHeaders = (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  if (req.user) {
-    req.headers["x-user-id"] = req.user.id;
-    req.headers["x-user-email"] = req.user.email;
-    req.headers["x-user-role"] = req.user.role;
-    console.log("✅ [PROXY HEADERS] User headers set:", req.user);
-  } else {
-    console.log("❌ [PROXY HEADERS] No user found for headers");
-  }
-  next();
-};
-
 // =============================================================================
 // MIDDLEWARE SETUP
 // =============================================================================
@@ -194,6 +179,8 @@ app.use(
     credentials: true,
   })
 );
+
+app.use(cookieParser());
 
 // Authenticate Request middleware
 app.use(express.json());

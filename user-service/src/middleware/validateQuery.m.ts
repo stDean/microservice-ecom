@@ -1,6 +1,5 @@
 // middleware/queryValidator.ts
-import { Request, Response, NextFunction } from "express";
-import { StatusCodes } from "http-status-codes";
+import { NextFunction, Request, Response } from "express";
 
 export const validateUserQuery = (
   req: Request,

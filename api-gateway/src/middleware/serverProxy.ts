@@ -93,6 +93,7 @@ export const createServiceProxy = (serviceUrl: string, serviceName: string) => {
         "X-User-Email": req.user?.email || "",
         "X-User-Role": req.user?.role || "",
         Authorization: req.headers.authorization || "",
+        Cookie: req.headers.cookie || "",
       } as Record<string, string>,
     };
 
@@ -120,14 +121,33 @@ export const createServiceProxy = (serviceUrl: string, serviceName: string) => {
         );
         console.log(`📨 [RESPONSE BODY]`, responseData);
 
+        if (proxyRes.headers["set-cookie"]) {
+          console.log("🍪 [TARGET SET-COOKIE]", proxyRes.headers["set-cookie"]);
+        } else {
+          console.log("❌ [NO SET-COOKIE FROM TARGET]");
+        }
+
         res.status(proxyRes.statusCode || 500);
 
+        // FIXED: Proper header forwarding including set-cookie arrays
         Object.keys(proxyRes.headers).forEach((key) => {
           const value = proxyRes.headers[key];
-          if (value && typeof value === "string") {
-            res.setHeader(key, value);
+          if (value) {
+            if (Array.isArray(value)) {
+              // Handle array headers (like set-cookie)
+              value.forEach((item) => {
+                res.append(key, item);
+              });
+            } else {
+              // Handle single value headers
+              res.setHeader(key, value);
+            }
           }
         });
+
+        // Debug: Check what headers are being sent to client
+        const finalHeaders = res.getHeaders();
+        console.log("📨 [FINAL RESPONSE HEADERS]", finalHeaders["set-cookie"]);
 
         res.send(responseData);
 

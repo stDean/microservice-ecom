@@ -35,8 +35,6 @@ export const userFromHeaders = (
         email: userEmail,
         role: userRole,
       };
-
-      console.log("User parsed from headers:", { userId, userEmail, userRole });
     } else {
       console.warn("Missing user headers:", { userId, userEmail, userRole });
     }

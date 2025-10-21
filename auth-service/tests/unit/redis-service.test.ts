@@ -8,7 +8,7 @@ vi.mock("redis", () => {
     isOpen: false,
     connect: vi.fn().mockResolvedValue(undefined),
     duplicate: vi.fn(),
-    destroy: vi.fn().mockResolvedValue(undefined),
+    quit: vi.fn().mockResolvedValue(undefined),
     publish: vi.fn().mockResolvedValue(undefined),
   };
 
@@ -32,13 +32,13 @@ describe("RedisService", () => {
       isOpen: false,
       connect: vi.fn().mockResolvedValue(undefined),
       duplicate: vi.fn(),
-      destroy: vi.fn().mockResolvedValue(undefined),
+      quit: vi.fn().mockResolvedValue(undefined),
     };
 
     mockPublisher = {
       on: vi.fn(),
       connect: vi.fn().mockResolvedValue(undefined),
-      destroy: vi.fn().mockResolvedValue(undefined),
+      quit: vi.fn().mockResolvedValue(undefined),
       publish: vi.fn().mockResolvedValue(undefined),
     };
 
@@ -154,8 +154,8 @@ describe("RedisService", () => {
     it("should destroy publisher and client", async () => {
       await redisService.disconnect();
 
-      expect(mockPublisher.destroy).toHaveBeenCalled();
-      expect(mockClient.destroy).toHaveBeenCalled();
+      expect(mockPublisher.quit).toHaveBeenCalled();
+      expect(mockClient.quit).toHaveBeenCalled();
     });
   });
 });

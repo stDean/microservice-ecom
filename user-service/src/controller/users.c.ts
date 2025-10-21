@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
+import { v4 as uuidv4 } from "uuid";
 import { User } from "../db/schema/user.s";
 import { NotFoundError } from "../errors";
 import RedisService from "../redis/client";
@@ -113,16 +114,30 @@ export const UserCtrl = {
   createAddress: async (req: Request, res: Response) => {
     const { id, email } = getUserFromAuth(req);
 
+    const userBeforeUpdate = await User.findOne({
+      email: email,
+      userId: id,
+    }).select("addresses");
+
+    const isFirstAddress =
+      !userBeforeUpdate || userBeforeUpdate.addresses.length === 0;
+
+    const addressData = {
+      ...req.body,
+      addressId: uuidv4(), // Generate unique addressId
+      isDefault: isFirstAddress,
+    };
+
     const user = await User.findOneAndUpdate(
       { email: email, userId: id },
-      { $push: { addresses: req.body } },
+      { $push: { addresses: addressData } },
       { new: true, runValidators: true }
     ).select("addresses");
 
     if (!user) throw new NotFoundError("User not found");
 
     // Invalidate addresses cache
-    await redis.del(`${USER_ADDRESSES_CACHE_PREFIX}${id}`);
+    await invalidateUserCache(id);
 
     return res.status(StatusCodes.CREATED).json({
       message: "Address created successfully.",
@@ -184,9 +199,9 @@ export const UserCtrl = {
       {
         email: email,
         userId: id,
-        "addresses._id": addressId,
+        "addresses.addressId": addressId,
       },
-      { addresses: { $elemMatch: { _id: addressId } } }
+      { addresses: { $elemMatch: { addressId: addressId } } }
     ).lean();
 
     if (!user?.addresses?.length) throw new NotFoundError("Address not found");
@@ -211,7 +226,7 @@ export const UserCtrl = {
       {
         email: email,
         userId: id,
-        "addresses._id": addressId,
+        "addresses.addressId": addressId,
       },
       { $set: updateFields },
       { new: true, runValidators: true }
@@ -234,7 +249,7 @@ export const UserCtrl = {
 
     const user = await User.findOneAndUpdate(
       { email: email, userId: id },
-      { $pull: { addresses: { _id: addressId } } },
+      { $pull: { addresses: { addressId: addressId } } },
       { new: true }
     ).select("addresses");
 

@@ -96,6 +96,7 @@ describe("AuthController", () => {
       json: mockJson,
       cookie: mockCookie,
       clearCookie: mockClearCookie,
+      getHeaders: vi.fn().mockReturnValue({}),
     };
 
     vi.clearAllMocks();

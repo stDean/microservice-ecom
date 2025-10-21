@@ -32,7 +32,7 @@ router
   .route("/")
   .get(/* adminOnly */ validateUserQuery, asyncHandler(UserCtrl.getUsers));
 router
-  .route("/:userId")
+  .route("/:id")
   .get(/* adminOnly */ asyncHandler(UserCtrl.getUserById));
 
 export default router;

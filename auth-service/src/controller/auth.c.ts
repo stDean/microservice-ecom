@@ -281,13 +281,22 @@ export const AuthCtrl = {
       expires: refreshTokenExpiresAt,
       sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
       path: "/",
-      domain: process.env.COOKIE_DOMAIN,
+      // domain: process.env.COOKIE_DOMAIN,
     };
 
     res.cookie("refreshToken", refreshToken, cookieOptions);
     res.cookie("sessionId", sessionId, cookieOptions);
 
-    logger.info("User logged in successfully", { userId: user.id });
+    // DEBUG: Check what headers are being set
+    console.log("🔍 [RESPONSE HEADERS]", res.getHeaders());
+
+    // DEBUG: Specifically check Set-Cookie headers
+    const setCookieHeaders = res.getHeaders()["set-cookie"];
+    console.log("🍪 [SET-COOKIE HEADERS]", setCookieHeaders);
+
+    // DEBUG: Check if cookies are actually in the response
+    const allHeaders = res.getHeaders();
+    console.log("📋 [ALL HEADERS KEYS]", Object.keys(allHeaders));
 
     res.status(StatusCodes.OK).json({
       message: "Login successful",

@@ -6,6 +6,7 @@ export const addressSchema = new Schema(
       type: String,
       required: true,
       unique: true,
+      sparse: true,
     },
     type: {
       type: String,
@@ -45,3 +46,4 @@ export const addressSchema = new Schema(
   },
   { _id: false }
 );
+

@@ -32,7 +32,7 @@ export class RedisEventConsumer {
 
     try {
       // Subscribe to Redis events
-      await eventSubscriber.subscribeToEvent("EMAIL_VERIFIED", (event) =>
+      await eventSubscriber.subscribeToEvent("USER_DELETED", (event) =>
         this.handleUserDeletedEvent(event as UserDeletedEvent)
       );
 
