@@ -18,7 +18,7 @@ services:
       - /app/node_modules
     command: ["npm", "run", "dev"]
 
-  auth-db:
+  product-db:
     environment:
       POSTGRES_PASSWORD: example
       POSTGRES_USER: user

@@ -129,6 +129,54 @@ services:
     networks:
       - ecom_network
 
+  product-catalog-service:
+    build:
+      context: ./product-catalog-service
+    container_name: product_catalog
+    image: product_catalog_image:latest
+    ports:
+      - "3004:3004"
+    networks:
+      - ecom_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3004,path:'/api/v1/productCatalog/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      product-db:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+
+  product-db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    networks:
+      - ecom_network
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d product_db}"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  product-migrate:
+    build: 
+      context: ./product-catalog-service
+      target: builder
+      args:
+        - NODE_ENV=development
+    command: ["npm", "run", "db:push"]
+    networks:
+      - ecom_network
+    depends_on:
+      product-db: 
+        condition: service_healthy
+
 # --- 2. Networks ---
 networks:
   ecom_network:

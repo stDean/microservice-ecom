@@ -218,7 +218,7 @@ app.use(
 
 app.use(
   "/productCatalog",
-  authenticateToken,
+  // authenticateToken,
   createRateLimit(15 * 60 * 1000, 100),
   circuitBreakerCheck("productCatalog"),
   createServiceProxy(SERVICES.productCatalog, "productCatalog")

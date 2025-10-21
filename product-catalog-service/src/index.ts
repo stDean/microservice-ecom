@@ -3,6 +3,8 @@ import express from "express";
 import { StatusCodes } from "http-status-codes";
 import { logger } from "./utils/logger";
 import ProductRoutes from "./route/product.r";
+import CategoryRoutes from "./route/category.r";
+import ProductVariantRoutes from "./route/prodVariant.r";
 import RedisService from "./redis/client";
 import { redisEventConsumer } from "./consumer/redisConsumer";
 import { errorHandlerMiddleware } from "./middleware/errorHandling.m";
@@ -16,12 +18,14 @@ app.get("/api/v1/productCatalog/health", (req, res) => {
   res.status(StatusCodes.OK).send({
     status: "OK",
     timestamp: new Date(),
-    service: "product-service",
+    service: "product-catalog-service",
     message: `Service is up and running on port ${PORT}`,
   });
 });
 
-app.use("/api/v1/productCatalog", ProductRoutes);
+app.use("/api/v1/productCatalog/products", ProductRoutes);
+app.use("/api/v1/productCatalog/categories", CategoryRoutes);
+app.use("/api/v1/productCatalog/variants", ProductVariantRoutes);
 
 app.use(errorHandlerMiddleware);
 
@@ -34,10 +38,13 @@ const startServer = async () => {
     redisService
       .connect()
       .then(() => {
-        logger.info("✅ User Service Redis connected");
+        logger.info("✅ Product Catalog Service Redis connected");
       })
       .catch((error) => {
-        logger.error("❌ Notification Service Redis connection failed:", error);
+        logger.error(
+          "❌ Product Catalog Service Redis connection failed:",
+          error
+        );
       });
 
     await redisEventConsumer.start();

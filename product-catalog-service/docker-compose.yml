@@ -9,7 +9,7 @@ services:
     networks:
       - prod-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3003/api/v1/productCatalog/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3004/api/v1/productCatalog/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
       interval: 10s
       timeout: 5s
       retries: 5

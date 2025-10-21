@@ -13,6 +13,7 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:3001
       - NOTIFICATION_SERVICE_URL=http://notification-service:3002
       - USER_SERVICE_URL=http://user-service:3003
+      - PRODUCT_SERVICE_URL=http://product-catalog-service:3004
     # Mount volumes for hot-reloading
     volumes:
       - ./api-gateway:/app
@@ -132,8 +133,38 @@ services:
     volumes:
       - user_db_data:/data/db
 
+  product-catalog-service:
+    build:
+      target: builder
+      args:
+        - NODE_ENV=Development
+    environment:
+      PORT: 3004
+      NODE_ENV: development
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: product_db
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./product-catalog-service/src:/app/src:ro
+      - ./product-catalog-service/package.json:/app/package.json:ro
+      - ./product-catalog-service/tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - product-db
+
+  product-db:
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: product_db
+    volumes:
+      - product-db-data:/var/lib/postgresql/data
+
 # Define volumes for persistent data
 volumes:
   auth_db_data:
   user_db_data:
+  product-db-data:
 
