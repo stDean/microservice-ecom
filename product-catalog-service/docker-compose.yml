@@ -3,7 +3,7 @@ services:
     build: 
       context: .
     image: product_service_image:1.0
-    container_name: product_service:latest
+    container_name: product_service
     ports:
       - "3004:3004"
     networks:
@@ -16,14 +16,9 @@ services:
       start_period: 30s
     depends_on:
       product-redis:
-        condition: service_completed_successfully
+        condition: service_started
       product-migrate:
         condition: service_completed_successfully
-
-  product-redis:
-    image: redis
-    networks:
-      - user-network
 
   product-db:
     image: postgres
@@ -51,6 +46,11 @@ services:
     depends_on:
       product-db: 
         condition: service_healthy
+
+  product-redis:
+    image: redis
+    networks:
+      - prod-network
 
 
 networks:

@@ -10,9 +10,9 @@ router
   .post(asyncHandler(CategoryCtrl.create))
   .get(asyncHandler(CategoryCtrl.getAll));
 
-router.post("/bulk-update", asyncHandler(CategoryCtrl.bulkUpdate));
-router.post("/bulk-delete", asyncHandler(CategoryCtrl.bulkDelete));
+router.patch("/bulk-update", asyncHandler(CategoryCtrl.bulkUpdate));
 router.post("/bulk-restore", asyncHandler(CategoryCtrl.bulkRestore));
+router.delete("/bulk-delete", asyncHandler(CategoryCtrl.bulkDelete));
 
 router.get("/slug/:slug", asyncHandler(CategoryCtrl.getBySlug));
 router.get("/:id/products", asyncHandler(CategoryCtrl.getProducts));

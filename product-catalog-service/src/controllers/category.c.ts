@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, like, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like, not, sql } from "drizzle-orm";
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import db from "../db";
@@ -485,11 +485,11 @@ export const CategoryCtrl = {
     }
 
     const result = await db.transaction(async (tx) => {
-      // Check if all categories exist
+      // Check if all categories exist - FIXED: Use inArray instead of raw SQL
       const existingCategories = await tx
         .select()
         .from(categories)
-        .where(sql`${categories.id} IN (${ids.join(",")})`);
+        .where(inArray(categories.id, ids));
 
       if (existingCategories.length !== ids.length) {
         throw new NotFoundError("One or more categories not found");
@@ -503,7 +503,7 @@ export const CategoryCtrl = {
           .where(
             and(
               eq(categories.slug, data.slug),
-              sql`${categories.id} NOT IN (${ids.join(",")})`
+              not(inArray(categories.id, ids)) // Use not(inArray()) instead of NOT IN with raw SQL
             )
           )
           .limit(1);
@@ -513,14 +513,14 @@ export const CategoryCtrl = {
         }
       }
 
-      // Bulk update
+      // Bulk update - FIXED: Use inArray instead of raw SQL
       const updatedCategories = await tx
         .update(categories)
         .set({
           ...data,
           updatedAt: new Date(),
         })
-        .where(sql`${categories.id} IN (${ids.join(",")})`)
+        .where(inArray(categories.id, ids))
         .returning();
 
       logger.info(`Bulk updated ${updatedCategories.length} categories`);
@@ -534,6 +534,7 @@ export const CategoryCtrl = {
       ),
       ...result.map((category) => cacheCategory(category)),
     ]);
+
     return res.status(StatusCodes.OK).json({
       message: "Categories updated successfully",
       categories: result,
@@ -557,11 +558,11 @@ export const CategoryCtrl = {
     let deletedCategories: any[] = [];
 
     const result = await db.transaction(async (tx) => {
-      // Check if all categories exist
+      // Check if all categories exist - FIXED: Use inArray
       const existingCategories = await tx
         .select()
         .from(categories)
-        .where(sql`${categories.id} IN (${ids.join(",")})`);
+        .where(inArray(categories.id, ids));
 
       const existingIds = existingCategories.map((c) => c.id);
       const nonExistingIds = ids.filter((id) => !existingIds.includes(id));
@@ -575,14 +576,14 @@ export const CategoryCtrl = {
       deletedCategories = existingCategories;
 
       if (isHardDelete) {
-        // Check for products in any of the categories
+        // Check for products in any of the categories - FIXED: Use inArray
         const categoriesWithProducts = await tx
           .select({
             categoryId: products.categoryId,
             productCount: sql<number>`count(*)`,
           })
           .from(products)
-          .where(sql`${products.categoryId} IN (${ids.join(",")})`)
+          .where(inArray(products.categoryId, ids))
           .groupBy(products.categoryId);
 
         if (categoriesWithProducts.length > 0) {
@@ -596,10 +597,8 @@ export const CategoryCtrl = {
           );
         }
 
-        // Hard delete all categories
-        await tx
-          .delete(categories)
-          .where(sql`${categories.id} IN (${ids.join(",")})`);
+        // Hard delete all categories - FIXED: Use inArray
+        await tx.delete(categories).where(inArray(categories.id, ids));
 
         logger.info(`Bulk hard deleted categories: ${ids.join(", ")}`);
 
@@ -608,14 +607,14 @@ export const CategoryCtrl = {
           type: "hard",
         };
       } else {
-        // Soft delete all categories
+        // Soft delete all categories - FIXED: Use inArray
         await tx
           .update(categories)
           .set({
             isActive: false,
             updatedAt: new Date(),
           })
-          .where(sql`${categories.id} IN (${ids.join(",")})`);
+          .where(inArray(categories.id, ids));
 
         logger.info(`Bulk soft deleted categories: ${ids.join(", ")}`);
 
@@ -654,11 +653,11 @@ export const CategoryCtrl = {
     }
 
     const result = await db.transaction(async (tx) => {
-      // Check if all categories exist
+      // Check if all categories exist - FIXED: Use inArray
       const existingCategories = await tx
         .select()
         .from(categories)
-        .where(sql`${categories.id} IN (${ids.join(",")})`);
+        .where(inArray(categories.id, ids));
 
       const existingIds = existingCategories.map((c) => c.id);
       const nonExistingIds = ids.filter((id) => !existingIds.includes(id));
@@ -669,14 +668,14 @@ export const CategoryCtrl = {
         );
       }
 
-      // Restore all categories
+      // Restore all categories - FIXED: Use inArray
       const restoredCategories = await tx
         .update(categories)
         .set({
           isActive: true,
           updatedAt: new Date(),
         })
-        .where(sql`${categories.id} IN (${ids.join(",")})`)
+        .where(inArray(categories.id, ids))
         .returning();
 
       logger.info(`Bulk restored categories: ${ids.join(", ")}`);
@@ -687,8 +686,9 @@ export const CategoryCtrl = {
     await Promise.all(result.map((category) => cacheCategory(category)));
 
     return res.status(StatusCodes.OK).json({
-      message: `Successfully restored ${ids.length} categories`,
-      restoredCount: result,
+      message: `Successfully restored ${result.length} categories`,
+      restoredCount: result.length,
+      categories: result,
     });
   },
 };

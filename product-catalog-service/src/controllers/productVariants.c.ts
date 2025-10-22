@@ -213,7 +213,7 @@ export const ProdVariantCtrl = {
         id: productId,
         name: product.name || "Product", // Product name from the third element in array
       },
-      variants: variantsList[0], // The actual variants data
+      variants: variantsList, // The actual variants data
       pagination: {
         page: pageNum,
         limit: limitNum,
