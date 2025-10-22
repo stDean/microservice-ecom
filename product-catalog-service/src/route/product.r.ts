@@ -2,6 +2,7 @@ import { Router } from "express";
 import { asyncHandler } from "../middleware/asyncHandler.m";
 import { ProductCtrl } from "../controllers/product.c";
 import { ProdVariantCtrl } from "../controllers/productVariants.c";
+import { adminOnly } from "../middleware/admin.m";
 
 const router = Router();
 
@@ -10,7 +11,6 @@ router
   .post(asyncHandler(ProductCtrl.create))
   .get(asyncHandler(ProductCtrl.getAll));
 
-router.get("/search", asyncHandler(ProductCtrl.search));
 router.get("/featured", asyncHandler(ProductCtrl.getFeatured));
 router.get("/slug/:slug", asyncHandler(ProductCtrl.getBySlug));
 
@@ -24,5 +24,7 @@ router
   .get(asyncHandler(ProductCtrl.getById))
   .patch(asyncHandler(ProductCtrl.update))
   .delete(asyncHandler(ProductCtrl.delete));
+
+router.post("/:id/restore", asyncHandler(ProductCtrl.restore));
 
 export default router;

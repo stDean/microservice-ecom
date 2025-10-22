@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { CategoryCtrl } from "../controllers/category.c";
 import { asyncHandler } from "../middleware/asyncHandler.m";
+import { adminOnly } from "../middleware/admin.m";
 
 const router = Router();
 

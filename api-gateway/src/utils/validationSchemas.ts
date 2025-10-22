@@ -138,7 +138,7 @@ export const createProductSchema = z
     isActive: z.boolean().default(true),
     isFeatured: z.boolean().default(false),
     categoryId: uuidSchema.optional(),
-    images: z.array(z.string().url("Invalid image URL")).max(10).optional(),
+    images: z.array(z.url("Invalid image URL")).max(10).optional(),
   })
   .strict();
 
@@ -153,7 +153,7 @@ export const updateProductSchema = z
     isActive: z.boolean().optional(),
     isFeatured: z.boolean().optional(),
     categoryId: uuidSchema.optional().nullable(),
-    images: z.array(z.string().url()).max(10).optional(),
+    images: z.array(z.url()).max(10).optional(),
   })
   .strict();
 

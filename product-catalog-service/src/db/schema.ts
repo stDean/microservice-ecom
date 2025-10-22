@@ -81,12 +81,15 @@ export const productVariants = pgTable(
     // Variant options
     size: text("size"), // 	Variant size (e.g., "S", "M", "L", "XL")
     color: text("color"), // Variant color (e.g., "Red", "Blue", "Black")
+    isActive: boolean("is_active").default(true).notNull(), // Whether the category is visible to customers
 
     // Pricing & Stock
     price: decimal("price", { precision: 10, scale: 2 }), // Optional override price (if different from main product)
     stock: integer("stock").default(0).notNull(), // Stock specific to this variant
 
     sku: text("sku").notNull(), // Stock Keeping Unit - unique identifier for inventory
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("variants_sku_idx").on(table.sku),

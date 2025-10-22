@@ -1,11 +1,9 @@
-import { Response, Request } from "express";
+import { and, asc, desc, eq, like, sql } from "drizzle-orm";
+import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import db from "../db";
 import { categories, products } from "../db/schema";
-import { and, asc, desc, eq, like, sql } from "drizzle-orm";
-import { logger } from "../utils/logger";
 import { BadRequestError, NotFoundError } from "../errors";
-import RedisService from "../redis/client";
 import {
   cacheCategory,
   cacheCategoryList,
@@ -17,11 +15,10 @@ import {
   invalidateAllCategoryCaches,
   invalidateCategoryCache,
 } from "../utils/categoryCache";
+import { logger } from "../utils/logger";
 
 type NewCategory = typeof categories.$inferInsert;
 type UpdateCategory = Partial<typeof categories.$inferInsert>;
-
-const redis = RedisService.getInstance();
 
 export const CategoryCtrl = {
   create: async (req: Request, res: Response) => {
