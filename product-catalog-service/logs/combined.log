@@ -13,3 +13,5 @@
 {"level":"info","message":"Category retrieved by slug: test-category","service":"notification-service","timestamp":"2025-10-21T20:43:00.351Z"}
 {"level":"info","message":"Category products for cat-123 retrieved from cache","service":"notification-service","timestamp":"2025-10-21T20:43:00.355Z"}
 {"level":"info","message":"Categories list retrieved from cache","service":"notification-service","timestamp":"2025-10-21T20:43:09.933Z"}
+{"level":"info","message":"SIGTERM received, shutting down gracefully","service":"notification-service","timestamp":"2025-10-22T14:49:16.271Z"}
+{"level":"info","message":"Redis event consumer stopped","service":"notification-service","timestamp":"2025-10-22T14:49:16.276Z"}

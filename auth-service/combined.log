@@ -1903,3 +1903,20 @@
 {"level":"info","message":"Password reset token generated","timestamp":"2025-10-21T07:12:28.242Z","userId":1}
 {"level":"info","message":"Password reset email resent","timestamp":"2025-10-21T07:12:28.244Z","userId":1}
 {"level":"info","message":"Password reset successfully","timestamp":"2025-10-21T07:12:28.247Z","userId":1}
+{"email":"new@example.com","level":"info","message":"User registered successfully","timestamp":"2025-10-22T17:51:03.246Z","userId":1}
+{"level":"info","message":"Email verified successfully","timestamp":"2025-10-22T17:51:03.256Z","token":"valid-token"}
+{"email":"unverified@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-22T17:51:03.259Z","userId":"user-uuid-123"}
+{"email":"test@example.com","level":"info","message":"Verification email resent","timestamp":"2025-10-22T17:51:03.260Z","userId":"user-uuid-123"}
+{"email":"nonexistent@example.com","level":"warn","message":"Failed login attempt - user not found","timestamp":"2025-10-22T17:51:03.261Z"}
+{"level":"warn","message":"Failed login attempt - email not verified","timestamp":"2025-10-22T17:51:03.262Z","userId":1}
+{"email":"test@example.com","level":"warn","message":"Failed login attempt","timestamp":"2025-10-22T17:51:03.263Z","userAgent":"test-agent"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-22T17:51:03.267Z"}
+{"level":"info","message":"Session deleted during logout","sessionId":"mock-session-id","timestamp":"2025-10-22T17:51:03.268Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-22T17:51:03.268Z"}
+{"error":{},"level":"error","message":"Error deleting session during logout","sessionId":"mock-session-id","timestamp":"2025-10-22T17:51:03.269Z"}
+{"level":"info","message":"User logged out successfully","timestamp":"2025-10-22T17:51:03.269Z"}
+{"level":"info","message":"Access token refreshed successfully","timestamp":"2025-10-22T17:51:03.272Z","userId":1}
+{"email":"nonexistent@example.com","level":"warn","message":"Password reset attempted for non-existent email","timestamp":"2025-10-22T17:51:03.276Z"}
+{"level":"info","message":"Password reset token generated","timestamp":"2025-10-22T17:51:03.277Z","userId":1}
+{"level":"info","message":"Password reset email resent","timestamp":"2025-10-22T17:51:03.279Z","userId":1}
+{"level":"info","message":"Password reset successfully","timestamp":"2025-10-22T17:51:03.280Z","userId":1}
