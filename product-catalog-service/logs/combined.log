@@ -1,0 +1,15 @@
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:11.418Z"}
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:13.052Z"}
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:22.928Z"}
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:24.603Z"}
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:28.192Z"}
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:31.386Z"}
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:45.377Z"}
+{"level":"info","message":"Category created: cat-123","service":"notification-service","timestamp":"2025-10-21T20:42:55.286Z"}
+{"level":"info","message":"Categories list retrieved from cache","service":"notification-service","timestamp":"2025-10-21T20:42:55.300Z"}
+{"level":"info","message":"Category cat-123 retrieved from cache","service":"notification-service","timestamp":"2025-10-21T20:43:00.344Z"}
+{"level":"info","message":"Category retrieved: cat-123","service":"notification-service","timestamp":"2025-10-21T20:43:00.346Z"}
+{"level":"info","message":"Category with slug test-category retrieved from cache","service":"notification-service","timestamp":"2025-10-21T20:43:00.349Z"}
+{"level":"info","message":"Category retrieved by slug: test-category","service":"notification-service","timestamp":"2025-10-21T20:43:00.351Z"}
+{"level":"info","message":"Category products for cat-123 retrieved from cache","service":"notification-service","timestamp":"2025-10-21T20:43:00.355Z"}
+{"level":"info","message":"Categories list retrieved from cache","service":"notification-service","timestamp":"2025-10-21T20:43:09.933Z"}

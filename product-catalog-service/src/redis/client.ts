@@ -203,6 +203,20 @@ class RedisService {
     }
   }
 
+  /**
+   * @notice Gets all keys matching a pattern
+   * @param pattern Redis key pattern with wildcards
+   * @returns Array of matching keys
+   */
+  async getKeys(pattern: string): Promise<string[]> {
+    try {
+      return await this.client.keys(pattern);
+    } catch (error) {
+      console.error("Redis keys error:", error);
+      throw error;
+    }
+  }
+
   // ==================== PUB/SUB METHODS (Existing) ====================
 
   /**

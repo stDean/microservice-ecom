@@ -5,9 +5,23 @@ import { categories, products } from "../db/schema";
 import { and, asc, desc, eq, like, sql } from "drizzle-orm";
 import { logger } from "../utils/logger";
 import { BadRequestError, NotFoundError } from "../errors";
+import RedisService from "../redis/client";
+import {
+  cacheCategory,
+  cacheCategoryList,
+  cacheCategoryProducts,
+  getCategoryBySlugFromCache,
+  getCategoryFromCache,
+  getCategoryListFromCache,
+  getCategoryProductsFromCache,
+  invalidateAllCategoryCaches,
+  invalidateCategoryCache,
+} from "../utils/categoryCache";
 
 type NewCategory = typeof categories.$inferInsert;
 type UpdateCategory = Partial<typeof categories.$inferInsert>;
+
+const redis = RedisService.getInstance();
 
 export const CategoryCtrl = {
   create: async (req: Request, res: Response) => {
@@ -35,6 +49,9 @@ export const CategoryCtrl = {
       return newCategory;
     });
 
+    // Invalidate list caches
+    await invalidateAllCategoryCaches();
+
     res.status(StatusCodes.CREATED).json({
       message: "Category created successfully",
       category: result,
@@ -50,6 +67,22 @@ export const CategoryCtrl = {
       sortBy = "name",
       sortOrder = "asc",
     } = req.query;
+
+    const cacheParams = {
+      page,
+      limit,
+      active,
+      search,
+      sortBy,
+      sortOrder,
+    };
+
+    // Try to get from cache first
+    const cachedResult = await getCategoryListFromCache(cacheParams);
+    if (cachedResult) {
+      logger.info(`Categories list retrieved from cache`);
+      return res.status(StatusCodes.OK).json(cachedResult);
+    }
 
     const pageNum = Number(page);
     const limitNum = Number(limit);
@@ -92,7 +125,7 @@ export const CategoryCtrl = {
     const totalCount = countResult[0]?.count || 0;
     const totalPages = Math.ceil(totalCount / limitNum);
 
-    res.status(StatusCodes.OK).json({
+    const response = {
       message: "Categories retrieved successfully",
       categories: categoriesList,
       pagination: {
@@ -103,11 +136,25 @@ export const CategoryCtrl = {
         hasNext: pageNum < totalPages,
         hasPrev: pageNum > 1,
       },
-    });
+    };
+
+    // Cache the result
+    await cacheCategoryList(cacheParams, response);
+
+    res.status(StatusCodes.OK).json(response);
   },
 
   getById: async (req: Request, res: Response) => {
     const { id } = req.params;
+
+    const cachedCategory = await getCategoryFromCache(id);
+    if (cachedCategory) {
+      logger.info(`Category ${id} retrieved from cache`);
+      return res.status(StatusCodes.OK).json({
+        message: "Category retrieved successfully",
+        category: cachedCategory,
+      });
+    }
 
     const [category] = await db
       .select()
@@ -121,6 +168,8 @@ export const CategoryCtrl = {
 
     logger.info(`Category retrieved: ${category.id}`);
 
+    await cacheCategory(category);
+
     return res.status(StatusCodes.OK).json({
       message: "Category retrieved successfully",
       category,
@@ -129,6 +178,15 @@ export const CategoryCtrl = {
 
   getBySlug: async (req: Request, res: Response) => {
     const { slug } = req.params;
+
+    const cachedCategory = await getCategoryBySlugFromCache(slug);
+    if (cachedCategory) {
+      logger.info(`Category with slug ${slug} retrieved from cache`);
+      return res.status(StatusCodes.OK).json({
+        message: "Category retrieved successfully",
+        category: cachedCategory,
+      });
+    }
 
     const [category] = await db
       .select()
@@ -141,6 +199,8 @@ export const CategoryCtrl = {
     }
 
     logger.info(`Category retrieved by slug: ${category.slug}`);
+
+    await cacheCategory(category);
 
     return res.status(StatusCodes.OK).json({
       message: "Category retrieved successfully",
@@ -160,6 +220,24 @@ export const CategoryCtrl = {
       sortBy = "createdAt",
       sortOrder = "desc",
     } = req.query;
+
+    const cacheParams = {
+      page,
+      limit,
+      active,
+      featured,
+      minPrice,
+      maxPrice,
+      sortBy,
+      sortOrder,
+    };
+
+    // Try to get from cache first
+    const cachedResult = await getCategoryProductsFromCache(id, cacheParams);
+    if (cachedResult) {
+      logger.info(`Category products for ${id} retrieved from cache`);
+      return res.status(StatusCodes.OK).json(cachedResult);
+    }
 
     const pageNum = Number(page);
     const limitNum = Number(limit);
@@ -220,7 +298,7 @@ export const CategoryCtrl = {
     const totalCount = countResult[0]?.count || 0;
     const totalPages = Math.ceil(totalCount / limitNum);
 
-    res.status(StatusCodes.OK).json({
+    const response = {
       message: "Category products retrieved successfully",
       category,
       products: productsList,
@@ -232,7 +310,12 @@ export const CategoryCtrl = {
         hasNext: pageNum < totalPages,
         hasPrev: pageNum > 1,
       },
-    });
+    };
+
+    // Cache the result
+    await cacheCategoryProducts(id, cacheParams, response);
+
+    res.status(StatusCodes.OK).json(response);
   },
 
   update: async (req: Request, res: Response) => {
@@ -276,6 +359,12 @@ export const CategoryCtrl = {
       return updatedCategory;
     });
 
+    // Invalidate relevant caches after update
+    await invalidateCategoryCache(id, result.slug);
+
+    // Cache the updated category
+    await cacheCategory(result);
+
     return res.status(StatusCodes.OK).json({
       message: "Category updated successfully",
       category: result,
@@ -287,6 +376,7 @@ export const CategoryCtrl = {
     const { hardDelete = "false" } = req.query;
 
     const isHardDelete = hardDelete === "true";
+    let deletedCategory: any;
 
     if (isHardDelete) {
       // Hard delete with transaction
@@ -299,6 +389,7 @@ export const CategoryCtrl = {
           .limit(1);
 
         if (!existingCategory) throw new NotFoundError("Category not found");
+        deletedCategory = existingCategory;
 
         // Check if category has products
         const [productCount] = await tx
@@ -317,10 +408,6 @@ export const CategoryCtrl = {
 
         logger.info(`Category hard deleted: ${id}`);
       });
-
-      return res.status(StatusCodes.OK).json({
-        message: "Category permanently deleted successfully",
-      });
     } else {
       // Soft delete (original behavior)
       await db.transaction(async (tx) => {
@@ -332,6 +419,7 @@ export const CategoryCtrl = {
           .limit(1);
 
         if (!existingCategory) throw new NotFoundError("Category not found");
+        deletedCategory = existingCategory;
 
         // Soft delete by setting isActive to false
         await tx
@@ -344,17 +432,22 @@ export const CategoryCtrl = {
 
         logger.info(`Category soft deleted: ${id}`);
       });
-
-      return res.status(StatusCodes.OK).json({
-        message: "Category soft deleted successfully",
-      });
     }
+
+    // Invalidate relevant caches after deletion
+    await invalidateCategoryCache(id, deletedCategory.slug);
+
+    return res.status(StatusCodes.OK).json({
+      message: `Category ${
+        isHardDelete ? "permanently " : ""
+      }deleted successfully`,
+    });
   },
 
   restore: async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Check if category exists
       const [existingCategory] = await tx
         .select()
@@ -378,6 +471,9 @@ export const CategoryCtrl = {
 
       return restoredCategory;
     });
+
+    // Invalidate relevant caches after deletion
+    await invalidateCategoryCache(id, result.slug);
 
     return res.status(StatusCodes.OK).json({
       message: "Category restored successfully",
@@ -434,6 +530,13 @@ export const CategoryCtrl = {
       return updatedCategories;
     });
 
+    // Invalidate caches for all updated categories and cache new data
+    await Promise.all([
+      ...result.map((category) =>
+        invalidateCategoryCache(category.id, category.slug)
+      ),
+      ...result.map((category) => cacheCategory(category)),
+    ]);
     return res.status(StatusCodes.OK).json({
       message: "Categories updated successfully",
       categories: result,
@@ -454,6 +557,8 @@ export const CategoryCtrl = {
       );
     }
 
+    let deletedCategories: any[] = [];
+
     const result = await db.transaction(async (tx) => {
       // Check if all categories exist
       const existingCategories = await tx
@@ -469,6 +574,8 @@ export const CategoryCtrl = {
           `Categories not found: ${nonExistingIds.join(", ")}`
         );
       }
+
+      deletedCategories = existingCategories;
 
       if (isHardDelete) {
         // Check for products in any of the categories
@@ -522,6 +629,13 @@ export const CategoryCtrl = {
       }
     });
 
+    // Invalidate caches for all deleted categories
+    await Promise.all(
+      deletedCategories.map((category) =>
+        invalidateCategoryCache(category.id, category.slug)
+      )
+    );
+
     return res.status(StatusCodes.OK).json({
       message: `Successfully ${result.type} deleted ${result.deletedCount} categories`,
       deletedCount: result.deletedCount,
@@ -542,7 +656,7 @@ export const CategoryCtrl = {
       );
     }
 
-    await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       // Check if all categories exist
       const existingCategories = await tx
         .select()
@@ -559,20 +673,25 @@ export const CategoryCtrl = {
       }
 
       // Restore all categories
-      await tx
+      const restoredCategories = await tx
         .update(categories)
         .set({
           isActive: true,
           updatedAt: new Date(),
         })
-        .where(sql`${categories.id} IN (${ids.join(",")})`);
+        .where(sql`${categories.id} IN (${ids.join(",")})`)
+        .returning();
 
       logger.info(`Bulk restored categories: ${ids.join(", ")}`);
+      return restoredCategories;
     });
+
+    // Cache all restored categories
+    await Promise.all(result.map((category) => cacheCategory(category)));
 
     return res.status(StatusCodes.OK).json({
       message: `Successfully restored ${ids.length} categories`,
-      restoredCount: ids.length,
+      restoredCount: result,
     });
   },
 };
