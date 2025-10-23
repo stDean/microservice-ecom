@@ -84,6 +84,7 @@ const SERVICES: ServiceConfig = {
   notification: process.env.NOTIFICATION_SERVICE_URL!,
   users: process.env.USER_SERVICE_URL!,
   productCatalog: process.env.PRODUCT_SERVICE_URL!,
+  carts: process.env.CART_SERVICE_URL!,
 };
 
 console.log("🔧 Service Configuration:", SERVICES);
@@ -98,6 +99,7 @@ const SERVICE_TIMEOUTS: { [key: string]: number } = {
   notification: 15000, // 15 seconds
   users: 20000,
   productCatalog: 20000,
+  carts: 20000,
 };
 
 // Enhanced morgan logging with correlation IDs
@@ -200,7 +202,7 @@ app.get("/circuit-status", (req: Request, res: Response) => {
 
 app.use(
   "/auth",
-  // createRateLimit(15 * 60 * 1000, 5),
+  createRateLimit(15 * 60 * 1000, 10),
   circuitBreakerCheck("auth"),
   createServiceProxy(SERVICES.auth, "auth")
 );
@@ -211,17 +213,25 @@ app.use(
 app.use(
   "/users",
   authenticateToken,
-  createRateLimit(15 * 60 * 1000, 100),
+  createRateLimit(15 * 60 * 1000, 200),
   circuitBreakerCheck("users"),
   createServiceProxy(SERVICES.users, "users")
 );
 
 app.use(
   "/productCatalog",
-  // authenticateToken,
+  authenticateToken,
   createRateLimit(15 * 60 * 1000, 100),
   circuitBreakerCheck("productCatalog"),
   createServiceProxy(SERVICES.productCatalog, "productCatalog")
+);
+
+app.use(
+  "/carts",
+  authenticateToken,
+  createRateLimit(15 * 60 * 1000, 100),
+  circuitBreakerCheck("carts"),
+  createServiceProxy(SERVICES.carts, "carts")
 );
 
 // =============================================================================

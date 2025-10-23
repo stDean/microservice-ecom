@@ -2,52 +2,40 @@ import "dotenv/config";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
 import { logger } from "./utils/logger";
-import ProductRoutes from "./route/product.r";
-import CategoryRoutes from "./route/category.r";
-import ProductVariantRoutes from "./route/prodVariant.r";
 import RedisService from "./redis/client";
 import { redisEventConsumer } from "./consumer/redisConsumer";
-import { errorHandlerMiddleware } from "./middleware/errorHandling.m";
-import db from "./db";
+import { redisErrorHandlerMiddleware } from "./middleware/errorHandler.m";
+import CartRoutes from "./routes/cart.r";
 
 const app = express();
-const PORT = process.env.PORT || 3004;
+const PORT = process.env.PORT || 3005;
 
 app.use(express.json());
 
-app.get("/api/v1/productCatalog/health", (req, res) => {
+app.get("/api/v1/cart/health", (req, res) => {
   res.status(StatusCodes.OK).send({
     status: "OK",
     timestamp: new Date(),
-    service: "product-catalog-service",
+    service: "cart-service",
     message: `Service is up and running on port ${PORT}`,
   });
 });
 
-app.use("/api/v1/productCatalog/products", ProductRoutes);
-app.use("/api/v1/productCatalog/categories", CategoryRoutes);
-app.use("/api/v1/productCatalog/variants", ProductVariantRoutes);
+app.use("/api/v1/carts", CartRoutes);
 
-app.use(errorHandlerMiddleware);
+app.use(redisErrorHandlerMiddleware);
 
 const redisService = RedisService.getInstance();
 
 const startServer = async () => {
   try {
-    // connect DB
-    await db.execute("SELECT 1"); // or use your database's connection method (e.g. authenticate())
-    console.log("Database connected successfully");
-
     redisService
       .connect()
       .then(() => {
-        logger.info("✅ Product Catalog Service Redis connected");
+        logger.info("✅ Cart Redis connected");
       })
       .catch((error) => {
-        logger.error(
-          "❌ Product Catalog Service Redis connection failed:",
-          error
-        );
+        logger.error("❌ Cart Redis connection failed:", error);
       });
 
     await redisEventConsumer.start();
