@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3005;
 
 app.use(express.json());
 
-app.get("/api/v1/cart/health", (req, res) => {
+app.get("/api/v1/carts/health", (req, res) => {
   res.status(StatusCodes.OK).send({
     status: "OK",
     timestamp: new Date(),

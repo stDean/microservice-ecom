@@ -1,0 +1,9 @@
+services:
+  cart-service:
+    build:
+      target: production
+      args:
+        - NODE_ENV=production
+    environment:
+      - REDIS_URL=${REDIS_URL}
+      - NODE_ENV=production

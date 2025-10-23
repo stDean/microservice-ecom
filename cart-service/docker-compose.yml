@@ -1,0 +1,28 @@
+services:
+  cart-service:
+    build:
+      context: .
+    image: cart_service_image:1.0
+    container_name: cart_service
+    ports:
+      - "3005:3005"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3005/api/v1/carts/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      cart-redis:
+        condition: service_started
+    networks:
+      - cart-network
+
+  cart-redis:
+    image: redis
+    networks:
+      - cart-network
+
+networks:
+  cart-network:
+    driver: bridge

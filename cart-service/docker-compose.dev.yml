@@ -1,0 +1,23 @@
+services:
+  cart-service:
+    build:
+      target: builder
+      args:
+        - NODE_ENV=development
+    environment:
+      - REDIS_URL=redis://cart-redis:6379
+      - NODE_ENV=development
+      - PORT=3005
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+  cart-redis:
+    volumes:
+      - cart_data:/data
+
+volumes:
+  cart_data:

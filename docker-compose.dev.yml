@@ -1,5 +1,27 @@
 # Extend the base configuration file
 services:
+  redis:
+    volumes:
+      - redis_data:/data
+      
+ # Auth Database
+  auth-db:
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: auth_db
+    volumes:
+      - auth_db_data:/var/lib/postgresql/data
+
+  # Product Database
+  product-db:
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: product_db
+    volumes:
+      - product_db_data:/var/lib/postgresql/data
+
   # --- API Gateway Development Overrides ---
   api-gateway:
     # Use the builder target for development
@@ -36,6 +58,7 @@ services:
       POSTGRES_USER: user
       POSTGRES_DB: auth_db
       REDIS_URL: redis://redis:6379
+      POSTGRES_IP: auth-db
       JWT_SECRET: dev-jwt-secret-change-in-production
     # Mount volumes for hot-reloading
     volumes:
@@ -44,18 +67,6 @@ services:
       - ./auth-service/tsconfig.json:/app/tsconfig.json:ro
       - /app/node_modules
     command: ["npm", "run", "dev"]
-    # We remove the healthcheck here as it often gets in the way of rapid development restarts
-
-  # --- Database Development Overrides ---
-  auth-db:
-    environment:
-      # Matches the development credentials set above
-      POSTGRES_PASSWORD: example
-      POSTGRES_USER: user
-      POSTGRES_DB: auth_db
-    # Add a volume for persistent dev data
-    volumes:
-      - auth_db_data:/var/lib/postgresql/data
 
   # --- Notification Development Overrides ---
   notification-service:
@@ -145,6 +156,7 @@ services:
       POSTGRES_PASSWORD: example
       POSTGRES_USER: user
       POSTGRES_DB: product_db
+      POSTGRES_IP: product-db
       REDIS_URL: redis://redis:6379
     volumes:
       - ./product-catalog-service/src:/app/src:ro
@@ -152,20 +164,28 @@ services:
       - ./product-catalog-service/tsconfig.json:/app/tsconfig.json:ro
       - /app/node_modules
     command: ["npm", "run", "dev"]
-    depends_on:
-      - product-db
 
-  product-db:
+  cart-service:
+    build:
+      target: builder
+      args:
+        - NODE_ENV=Development
     environment:
-      POSTGRES_PASSWORD: example
-      POSTGRES_USER: user
-      POSTGRES_DB: product_db
+      PORT: 3005
+      NODE_ENV: development
+      REDIS_URL: redis://redis:6379
     volumes:
-      - product-db-data:/var/lib/postgresql/data
+      - ./cart-service/src:/app/src:ro
+      - ./cart-service/package.json:/app/package.json:ro
+      - ./cart-service/tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
 
 # Define volumes for persistent data
 volumes:
-  auth_db_data:
   user_db_data:
-  product-db-data:
+  redis_data:
+  auth_db_data:
+  product_db_data:
 
