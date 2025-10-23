@@ -8,44 +8,35 @@ export interface BaseEvent {
 interface ProductData {
   productId: string;
   name: string;
-  description: string;
-  categoryId: string;
-  // Add other fields necessary for consumers to index or log
+  message: string;
+  newStatus?: boolean;
 }
 
-export interface ProductCreated extends BaseEvent {
-  type: "PRODUCT_CREATED";
+export interface ProductStatusChange extends BaseEvent {
+  type: "PRODUCT_STATUS_CHANGED";
   data: ProductData;
 }
 
 export interface ProductDeleted extends BaseEvent {
   type: "PRODUCT_DELETED";
-  data: { productId: string };
-}
-
-export interface ProductUpdated extends BaseEvent {
-  type: "PRODUCT_UPDATED";
-  data: ProductData & {
-    changes: Array<{ field: string; oldValue: any; newValue: any }>; // Optional: helpful for auditing
-  };
+  data: Omit<ProductData, "name">;
 }
 
 export interface ProductPriceChange extends BaseEvent {
   type: "PRODUCT_PRICE_CHANGE";
-  data: {
-    productId: string;
-    oldPrice: string;
-    newPrice: string;
-    currency: string;
-  };
+  data: ProductData;
 }
 
 export interface OrderCompleted extends BaseEvent {
   type: "ORDER_COMPLETED";
+  data: {
+    orderId: string;
+    userId: string;
+  };
 }
 
-export type ProductEvent =
-  | ProductCreated
+export type CartEvents =
+  | ProductStatusChange
   | ProductDeleted
-  | ProductUpdated
-  | ProductPriceChange;
+  | ProductPriceChange
+  | OrderCompleted;

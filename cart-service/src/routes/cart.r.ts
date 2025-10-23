@@ -12,6 +12,7 @@ router
   .delete(asyncHandler(CartCtrl.clear));
 
 router.post("/me/items", asyncHandler(CartCtrl.add));
+router.get("/me/totals", asyncHandler(CartCtrl.getTotals));
 router.post("/me/check-out", asyncHandler(CartCtrl.checkOut));
 
 router

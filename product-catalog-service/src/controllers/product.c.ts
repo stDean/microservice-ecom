@@ -4,6 +4,7 @@ import { StatusCodes } from "http-status-codes";
 import db from "../db";
 import { categories, products, productVariants } from "../db/schema";
 import { BadRequestError, NotFoundError } from "../errors";
+import { eventPublisher } from "../redis/publisher";
 import { logger } from "../utils/logger";
 import {
   cacheFeaturedProducts,
@@ -425,6 +426,25 @@ export const ProductCtrl = {
       category: updatedWithCategory.category,
     };
 
+    // Publish specific events based on what changed
+    if (updateData.price !== undefined) {
+      // Only publish price change event if price was actually updated
+      await eventPublisher.publishEvent({
+        type: "PRODUCT_PRICE_CHANGE",
+        source: "product-catalog-service",
+        timestamp: new Date(),
+        version: "1.0.0",
+        data: {
+          productId: updatedWithCategory.product.id,
+          name: updatedWithCategory.product.name,
+          message: "Product price updated.",
+        },
+      });
+    }
+
+    // For other updates, you might publish a general PRODUCT_UPDATED event
+    // or create specific events for name changes, description changes, etc.
+
     // Cache the updated product with category
     await cacheProduct(productWithCategory);
 
@@ -471,7 +491,21 @@ export const ProductCtrl = {
         }
 
         // Hard delete - permanently remove from database
-        await tx.delete(products).where(eq(products.id, id));
+        const product = await tx
+          .delete(products)
+          .where(eq(products.id, id))
+          .returning();
+
+        await eventPublisher.publishEvent({
+          type: "PRODUCT_DELETED",
+          source: "product-catalog-service",
+          timestamp: new Date(),
+          version: "1.0.0",
+          data: {
+            productId: product[0].id,
+            message: "Product has been deleted.",
+          },
+        });
 
         logger.info(`Product hard deleted: ${id}`);
       });
@@ -489,13 +523,27 @@ export const ProductCtrl = {
         deletedProduct = existingProduct;
 
         // Soft delete by setting isActive to false
-        await tx
+        const product = await tx
           .update(products)
           .set({
             isActive: false,
             updatedAt: new Date(),
           })
-          .where(eq(products.id, id));
+          .where(eq(products.id, id))
+          .returning();
+
+        await eventPublisher.publishEvent({
+          type: "PRODUCT_STATUS_CHANGED",
+          source: "product-catalog-service",
+          timestamp: new Date(),
+          version: "1.0.0",
+          data: {
+            productId: product[0].id,
+            newStatus: product[0].isActive,
+            name: product[0].name,
+            message: "Product is not available.",
+          },
+        });
 
         logger.info(`Product soft deleted: ${id}`);
       });
