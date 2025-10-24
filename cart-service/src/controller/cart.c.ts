@@ -2,7 +2,11 @@ import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { CartCache } from "../utils/cartCache";
 import RedisService from "../redis/client";
-import { BadRequestError, NotFoundError } from "../errors";
+import {
+  BadRequestError,
+  NotFoundError,
+  UnauthenticatedError,
+} from "../errors";
 
 declare global {
   namespace Express {
@@ -16,8 +20,6 @@ declare global {
   }
 }
 
-const redisService = RedisService.getInstance();
-
 export const CartCtrl = {
   /**
    * Add a new item
@@ -27,6 +29,11 @@ export const CartCtrl = {
     const { itemId, quantity, price, name } = req.body;
     const userId = req.user?.id;
 
+    if (!userId) {
+      throw new UnauthenticatedError("User not authenticated");
+    }
+
+    const redisService = RedisService.getInstance();
     const cartKey = `cart:${userId}`;
 
     // Create cart item structure
@@ -68,6 +75,7 @@ export const CartCtrl = {
    */
   get: async (req: Request, res: Response) => {
     const userId = req.user?.id;
+    const redisService = RedisService.getInstance();
 
     const cachedSummary = await CartCache.getCartSummaryFromCache(userId!);
     if (cachedSummary) {
@@ -127,6 +135,7 @@ export const CartCtrl = {
     const { quantity } = req.body;
     const userId = req.user?.id;
 
+    const redisService = RedisService.getInstance();
     const cartKey = `cart:${userId}`;
     // Try to get from item cache first
     let currentItem = await CartCache.getCartItemFromCache(userId!, itemId);
@@ -167,6 +176,7 @@ export const CartCtrl = {
     const userId = req.user?.id;
 
     const cartKey = `cart:${userId}`;
+    const redisService = RedisService.getInstance();
 
     // Check if item exists (try cache first)
     let itemExists = await CartCache.getCartItemFromCache(userId!, itemId);
@@ -196,6 +206,7 @@ export const CartCtrl = {
     const userId = req.user?.id;
 
     const cartKey = `cart:${userId}`;
+    const redisService = RedisService.getInstance();
 
     // Check if cart exists and has items
     const cartItems = await redisService.hGetAll(cartKey);
@@ -224,6 +235,7 @@ export const CartCtrl = {
     const userId = req.user?.id;
 
     const cartKey = `cart:${userId}`;
+    const redisService = RedisService.getInstance();
 
     // Try to get cart from cache first
     const cachedSummary = await CartCache.getCartSummaryFromCache(userId!);
@@ -292,6 +304,7 @@ export const CartCtrl = {
     const { guestCart } = req.body; // guestCart should be an object of { itemId: cartItem }
 
     const userCartKey = `cart:${userId}`;
+    const redisService = RedisService.getInstance();
 
     // Get current user cart (try cache first)
     const cachedSummary = await CartCache.getCartSummaryFromCache(userId);
@@ -352,6 +365,7 @@ export const CartCtrl = {
    */
   validate: async (req: Request, res: Response) => {
     const { user_id } = req.query;
+    const redisService = RedisService.getInstance();
 
     if (!user_id) {
       return res.status(StatusCodes.BAD_REQUEST).json({
