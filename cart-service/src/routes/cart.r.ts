@@ -1,8 +1,11 @@
 import { Router } from "express";
 import { CartCtrl } from "../controller/cart.c";
 import { asyncHandler } from "../middleware/asyncHandler.m";
+import { userFromHeaders } from "../middleware/useFromHeaders.m";
 
 const router = Router();
+
+router.use(userFromHeaders);
 
 router.get("/validate", asyncHandler(CartCtrl.validate));
 
