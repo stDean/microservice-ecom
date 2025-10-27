@@ -16,3 +16,6 @@
 /cart-service/node_modules
 /cart-service/.env
 /cart-service/.dockerignore
+/order-service/node_modules
+/order-service/.env
+/order-service/.dockerignore

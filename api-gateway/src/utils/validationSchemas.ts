@@ -230,3 +230,86 @@ export const productIdParamsSchema = z.object({
 export const categoryIdParamsSchema = z.object({
   categoryId: uuidSchema,
 });
+
+// Order Schemas
+export const createOrderSchema = z
+  .object({
+    shippingAddress: z.object({
+      deliveryOption: z.string().min(1, "Delivery option is required"),
+      street: z.string().min(1, "Street address is required").max(100),
+      city: z.string().min(1, "City is required").max(50),
+      state: z.string().min(1, "State is required").max(50),
+      zipCode: z.string().min(1, "Zip code is required").max(20),
+      country: z.string().min(1, "Country is required").max(50),
+    }),
+    paymentMethod: z
+      .object({
+        type: z.enum(["pay_now", "cash_on_delivery"]),
+        paymentMethodId: z.string().optional(),
+      })
+      .refine(
+        (data) => {
+          if (data.type === "pay_now" && !data.paymentMethodId) {
+            return false;
+          }
+          return true;
+        },
+        {
+          message: "Payment method ID is required when type is 'pay_now'",
+          path: ["paymentMethodId"],
+        }
+      ),
+    cartItems: z
+      .array(
+        z.object({
+          itemId: z.string().min(1, "Item ID is required"),
+          name: z.string().min(1, "Item name is required").max(200),
+          price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid price format"),
+          quantity: z.number().int().min(1, "Quantity must be at least 1"),
+          sku: z.string().optional(),
+        })
+      )
+      .min(1, "Cart must contain at least one item"),
+  })
+  .strict();
+
+export const orderIdParamsSchema = z.object({
+  id: z.string().regex(/^\d+$/, "Order ID must be a number"),
+});
+
+export const cancelOrderSchema = z
+  .object({
+    reason: z.string().max(500).optional(),
+  })
+  .strict();
+
+export const paymentWebhookSchema = z
+  .object({
+    orderId: z.number().int().positive("Order ID must be positive"),
+    paymentIntentId: z.string().min(1, "Payment intent ID is required"),
+    status: z.enum(["succeeded", "failed", "processing"]),
+    secret: z.string().min(1, "Webhook secret is required"),
+  })
+  .strict();
+
+export const statusWebhookSchema = z
+  .object({
+    orderId: z.number().int().positive("Order ID must be positive"),
+    status: z.enum([
+      "PENDING",
+      "PAID",
+      "SHIPPED",
+      "DELIVERED",
+      "CANCELLED",
+      "REFUNDED",
+    ]),
+    reason: z.string().max(500).optional(),
+    secret: z.string().min(1, "Webhook secret is required"),
+  })
+  .strict();
+
+export const orderQuerySchema = paginationQuerySchema.extend({
+  status: z
+    .enum(["PENDING", "PAID", "SHIPPED", "DELIVERED", "CANCELLED", "REFUNDED"])
+    .optional(),
+});

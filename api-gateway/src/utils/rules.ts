@@ -26,6 +26,12 @@ import {
   updateUserSchema,
   userIdParamsSchema,
   userQuerySchema,
+  createOrderSchema,
+  orderIdParamsSchema,
+  cancelOrderSchema,
+  paymentWebhookSchema,
+  statusWebhookSchema,
+  orderQuerySchema,
 } from "./validationSchemas";
 
 export interface ValidationRules {
@@ -159,5 +165,33 @@ export const validationRules: ValidationRules = {
 
   "/productCatalog/variants/sku/:sku": {
     GET: { params: skuParamsSchema },
+  },
+
+  // ==================== ORDERS ====================
+  "/orders": {
+    POST: { body: createOrderSchema },
+  },
+
+  "/orders/me": {
+    GET: { query: orderQuerySchema },
+  },
+
+  "/orders/:id": {
+    GET: { params: orderIdParamsSchema },
+  },
+
+  "/orders/:id/cancel": {
+    PATCH: {
+      params: orderIdParamsSchema,
+      body: cancelOrderSchema,
+    },
+  },
+
+  "/orders/webhook/payment": {
+    POST: { body: paymentWebhookSchema },
+  },
+
+  "/orders/status": {
+    POST: { body: statusWebhookSchema },
   },
 };

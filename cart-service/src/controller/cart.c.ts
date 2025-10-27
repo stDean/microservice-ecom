@@ -1,12 +1,8 @@
 import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
-import { CartCache } from "../utils/cartCache";
+import { NotFoundError, UnauthenticatedError } from "../errors";
 import RedisService from "../redis/client";
-import {
-  BadRequestError,
-  NotFoundError,
-  UnauthenticatedError,
-} from "../errors";
+import { CartCache } from "../utils/cartCache";
 
 declare global {
   namespace Express {
@@ -224,74 +220,6 @@ export const CartCtrl = {
     return res.status(StatusCodes.OK).json({
       message: "Cart cleared successfully",
       clearedItems: Object.keys(cartItems).length,
-    });
-  },
-
-  /**
-   * Initiate checkout.
-   * PATCH /carts/me/check-out
-   */
-  checkOut: async (req: Request, res: Response) => {
-    const userId = req.user?.id;
-
-    const cartKey = `cart:${userId}`;
-    const redisService = RedisService.getInstance();
-
-    // Try to get cart from cache first
-    const cachedSummary = await CartCache.getCartSummaryFromCache(userId!);
-    let cartItems = cachedSummary?.items;
-
-    if (!cartItems) {
-      // Get cart items from main storage
-      cartItems = await redisService.hGetAll(cartKey);
-    }
-
-    if (!cartItems || Object.keys(cartItems).length === 0) {
-      throw new BadRequestError("Cannot checkout empty cart");
-    }
-
-    // Calculate total (use cached totals if available)
-    let totalPrice;
-    const cachedTotals = await CartCache.getCartTotalsFromCache(userId!);
-
-    if (cachedTotals) {
-      totalPrice = cachedTotals.totalPrice;
-    } else {
-      const itemsArray = Object.values(cartItems);
-      totalPrice = itemsArray.reduce(
-        (sum: number, item: any) => sum + item.price * item.quantity,
-        0
-      );
-      totalPrice = Math.round(totalPrice * 100) / 100;
-
-      // Cache totals
-      await CartCache.cacheCartTotals(userId!, { totalPrice });
-    }
-
-    // Create checkout session
-    const checkoutSession = {
-      userId,
-      items: cartItems,
-      totalPrice,
-      checkoutAt: new Date().toISOString(),
-      status: "pending",
-    };
-
-    // Store checkout session with expiration
-    const sessionId = `checkout:${userId}:${Date.now()}`;
-    await CartCache.cacheCheckoutSession(sessionId, checkoutSession);
-    await CartCache.cacheActiveCheckout(userId!, checkoutSession);
-
-    // Invalidate cart caches since we're proceeding to checkout
-    await CartCache.invalidateCartSummary(userId!);
-    await CartCache.invalidateCartTotals(userId!);
-
-    return res.status(StatusCodes.OK).json({
-      message: "Checkout initiated successfully",
-      sessionId,
-      totalPrice,
-      itemCount: Object.keys(cartItems).length,
-      expiresIn: "30 minutes",
     });
   },
 

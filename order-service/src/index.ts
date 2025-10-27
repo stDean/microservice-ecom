@@ -1,0 +1,62 @@
+import "dotenv/config";
+import express from "express";
+import { StatusCodes } from "http-status-codes";
+import OrderRoutes from "./routes/order.r";
+import { errorHandlerMiddleware } from "./middleware/errorHandling.m";
+import RedisService from "./redis/client";
+import { logger } from "./utils/logger";
+import db from "./db";
+
+const app = express();
+const PORT = process.env.PORT || 3006;
+
+app.use(express.json());
+
+app.get("/api/v1/orders/health", (req, res) => {
+  res.status(StatusCodes.OK).send({
+    status: "OK",
+    timestamp: new Date(),
+    service: "order-service",
+    message: `Service is up and running on port ${PORT}`,
+  });
+});
+
+app.use("/api/v1/orders", OrderRoutes);
+
+// ERROR HANDLING MIDDLEWARE
+app.use(errorHandlerMiddleware);
+
+const redisService = RedisService.getInstance();
+
+const startServer = async () => {
+  try {
+    await db.execute("SELECT 1");
+    logger.info("✅ Order Service Database connected");
+
+    redisService
+      .connect()
+      .then(() => {
+        logger.info("✅ Order Service Redis connected");
+      })
+      .catch((error) => {
+        logger.error("❌ Notification Service Redis connection failed:", error);
+      });
+
+    app.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    logger.error("Failed to start server:", error);
+    process.exit(1); // Exit the process with a failure code
+  }
+};
+
+// Graceful shutdown
+process.on("SIGTERM", async () => {
+  const redis = RedisService.getInstance();
+  await redis.disconnect();
+
+  process.exit(0);
+});
+
+startServer();
