@@ -7,6 +7,7 @@ import {
   integer,
   pgEnum,
   index,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -23,7 +24,7 @@ export const orderStatusEnum = pgEnum("order_status", [
 export const orders = pgTable(
   "orders",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
 
     // Links to external services
     userId: text("user_id").notNull(), // Canonical ID from User Service
@@ -62,14 +63,14 @@ export const orders = pgTable(
 export const orderItems = pgTable(
   "order_items",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().defaultRandom(),
 
-    orderId: integer("order_id")
+    orderId: uuid("order_id")
       .references(() => orders.id)
       .notNull(),
 
     // Product details (Snapshot of product data at time of order)
-    productId: integer("product_id").notNull(),
+    productId: text("product_id").notNull(),
     productName: text("product_name").notNull(),
     productSku: text("product_sku"),
     quantity: integer("quantity").notNull(),
@@ -88,8 +89,8 @@ export const orderItems = pgTable(
 
 // --- C. Status History Table (Audit Log) ---
 export const orderStatusHistory = pgTable("order_status_history", {
-  id: serial("id").primaryKey(),
-  orderId: integer("order_id")
+  id: uuid("id").primaryKey().defaultRandom(),
+  orderId: uuid("order_id")
     .references(() => orders.id)
     .notNull(),
   status: text("status").notNull(), // e.g., 'PENDING', 'PAID'

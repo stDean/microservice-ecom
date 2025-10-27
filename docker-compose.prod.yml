@@ -106,3 +106,18 @@ services:
       - NODE_ENV=production
       - REDIS_URL=${REDIS_URL}
     command: ["npm", "run", "start"]
+
+  order-service:
+    build: 
+      target: production
+      args:
+        - NODE_ENV=production
+    environment:
+      - NODE_ENV=production
+      - PORT=3006
+      - POSTGRES_USER=${ORDER_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${ORDER_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${ORDER_POSTGRES_DB}
+      - POSTGRES_IP=${ORDER_POSTGRES_IP}
+      - REDIS_URL=${REDIS_URL}
+    command: ["npm", "run", "start"] 

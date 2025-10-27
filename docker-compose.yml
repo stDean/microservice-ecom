@@ -9,6 +9,20 @@ services:
       - "6379:6379"
     command: redis-server --appendonly yes
 
+  # Auth Database
+  auth-db:
+    image: postgres:15-alpine
+    container_name: auth_db
+    ports:
+      - "5433:5432"  # Different external port
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d auth_db"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    networks:
+      - ecom_network
+
   # Product Database
   product-db:
     image: postgres:15-alpine
@@ -17,6 +31,19 @@ services:
       - "5434:5432"  # Different external port
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d product_db"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    networks:
+      - ecom_network
+
+  order-db:
+    image: postgres:15-alpine
+    container_name: order_db
+    ports:
+      - "5435:5432"  # Different external port
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d order_db"]
       interval: 5s
       timeout: 10s
       retries: 5
@@ -40,6 +67,8 @@ services:
       notification-service:
         condition: service_healthy
       user-service:
+        condition: service_healthy
+      product-catalog-service:
         condition: service_healthy
       cart-service: 
         condition: service_healthy
@@ -67,20 +96,6 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_started
-
-  # Auth Database
-  auth-db:
-    image: postgres:15-alpine
-    container_name: auth_db
-    ports:
-      - "5433:5432"  # Different external port
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d auth_db"]
-      interval: 5s
-      timeout: 10s
-      retries: 5
-    networks:
-      - ecom_network
       
   # Database Migration Service - Runs once and exits
   auth-migrate:
@@ -201,6 +216,40 @@ services:
     depends_on:
       redis:
         condition: service_started
+
+  order-service:
+    build:
+      context: ./order-service
+    container_name: order_service
+    image: order_service_image:latest
+    ports:
+      - "3006:3006"
+    networks:
+      - ecom_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3006,path:'/api/v1/orders/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      redis:
+        condition: service_started
+      order-migrate:
+        condition: service_completed_successfully
+
+  order-migrate:
+    build: 
+      context: ./order-service
+      target: builder
+      args:
+        - NODE_ENV=development
+    command: ["npm", "run", "db:push"]
+    networks:
+      - ecom_network
+    depends_on:
+      order-db: 
+        condition: service_healthy
 
 # --- 2. Networks ---
 networks:

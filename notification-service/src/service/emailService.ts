@@ -90,7 +90,6 @@ class EmailService {
    * @emits Logs success or failure with detailed context
    */
   async sendVerificationEmail(to: string, verificationToken: string) {
-    // 💡 In a real app, use a templating engine (like Handlebars) here
     const verificationLink = `${process.env.FRONTEND_URL}/verify?token=${verificationToken}`;
 
     const mailOptions = {
@@ -124,7 +123,6 @@ class EmailService {
    * @emits Logs success or failure with detailed context
    */
   async sendPasswordResetEmail(to: string, resetToken: string) {
-    // 💡 In a real app, use a templating engine (like Handlebars) here
     const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
 
     const mailOptions = {
@@ -142,6 +140,74 @@ class EmailService {
     } catch (error) {
       logger.error("Failed to send password reset email after retries", {
         email: to,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * @notice Sends order confirmation email to user
+   * @dev Sends order details using email template
+   * @param to Recipient email address
+   * @param orderData Order details including items and totals
+   * @return Promise<void>
+   * @throws Error if email fails to send after retries
+   */
+  async sendOrderConfirmationEmail(to: string, orderData: any) {
+    const mailOptions = {
+      from: `"E-Commerce App" <${
+        process.env.MAIL_FROM || "no-reply@ecommerce.com"
+      }>`,
+      to,
+      subject: `Order Confirmation - #${orderData.orderId}`,
+      html: emailTemplates.orderConfirmation(orderData),
+    };
+
+    try {
+      await this.sendEmailWithRetry(mailOptions);
+      logger.info("Order confirmation email sent successfully", {
+        email: to,
+        orderId: orderData.orderId,
+      });
+    } catch (error) {
+      logger.error("Failed to send order confirmation email after retries", {
+        email: to,
+        orderId: orderData.orderId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * @notice Sends order cancellation email to user
+   * @dev Sends cancellation details using email template
+   * @param to Recipient email address
+   * @param orderData Cancellation details including reason and refund status
+   * @return Promise<void>
+   * @throws Error if email fails to send after retries
+   */
+  async sendOrderCancellationEmail(to: string, orderData: any) {
+    const mailOptions = {
+      from: `"E-Commerce App" <${
+        process.env.MAIL_FROM || "no-reply@ecommerce.com"
+      }>`,
+      to,
+      subject: `Order Cancelled - #${orderData.orderId}`,
+      html: emailTemplates.orderCancellation(orderData),
+    };
+
+    try {
+      await this.sendEmailWithRetry(mailOptions);
+      logger.info("Order cancellation email sent successfully", {
+        email: to,
+        orderId: orderData.orderId,
+      });
+    } catch (error) {
+      logger.error("Failed to send order cancellation email after retries", {
+        email: to,
+        orderId: orderData.orderId,
         error: (error as Error).message,
       });
       throw error;

@@ -37,6 +37,7 @@ services:
       - USER_SERVICE_URL=http://user-service:3003
       - PRODUCT_SERVICE_URL=http://product-catalog-service:3004
       - CART_SERVICE_URL=http://cart-service:3005
+      - ORDER_SERVICE_URL=http://order-service:3006
     # Mount volumes for hot-reloading
     volumes:
       - ./api-gateway:/app
@@ -169,7 +170,7 @@ services:
     build:
       target: builder
       args:
-        - NODE_ENV=Development
+        - NODE_ENV=development
     environment:
       PORT: 3005
       NODE_ENV: development
@@ -181,6 +182,34 @@ services:
       - /app/node_modules
     command: ["npm", "run", "dev"]
 
+  order-service:
+    build:
+      target: builder
+      args:
+        - NODE_ENV=development
+    environment:
+      PORT: 3006
+      NODE_ENV: development
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: order_db
+      REDIS_URL: redis://redis:6379
+      POSTGRES_IP: order-db
+    volumes:
+      - ./order-service/src:/app/src:ro
+      - ./order-service/package.json:/app/package.json:ro
+      - ./order-service/tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+  order-db:
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: order_db
+    volumes:
+      - order_db_data:/var/lib/postgresql/data
+
 
 # Define volumes for persistent data
 volumes:
@@ -188,4 +217,5 @@ volumes:
   redis_data:
   auth_db_data:
   product_db_data:
+  order_db_data:
 

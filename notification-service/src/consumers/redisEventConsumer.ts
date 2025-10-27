@@ -1,7 +1,12 @@
 import { logger } from "../config/logger";
 import { rabbitMQService } from "../config/rabbitmq";
 import { eventSubscriber } from "../events/subscriber";
-import { PasswordResetEvent, UserRegisteredEvent } from "../events/types";
+import {
+  PasswordResetEvent,
+  UserRegisteredEvent,
+  OrderPlacedEvent,
+  OrderCancelledEvent,
+} from "../events/types";
 
 /**
  * @title Redis Event Consumer
@@ -114,6 +119,87 @@ export class RedisEventConsumer {
       });
     } catch (error) {
       logger.error("Error stopping Redis event consumer:", error);
+    }
+  }
+
+  /**
+   * @notice Processes order placed events for order confirmation emails
+   * @dev Queues order confirmation email with order details
+   * @param event Order placed event with order details
+   */
+  private async handleOrderPlaced(event: OrderPlacedEvent) {
+    try {
+      logger.info("🛒 Received ORDER_PLACED event", {
+        orderId: event.data.orderId,
+        userId: event.data.userId,
+        status: event.data.status,
+      });
+
+      // PUBLISH to RabbitMQ queue
+      await rabbitMQService.publishMessage("order_emails", {
+        id: `order_placed_${Date.now()}`,
+        email: event.data.userId, // Assuming userId is the email, adjust if needed
+        type: "ORDER_PLACED",
+        data: {
+          orderId: event.data.orderId,
+          status: event.data.status,
+          items: event.data.items,
+          orderSummary: {
+            subtotal: event.data.subtotal,
+            shipping: event.data.shippingCost,
+            tax: event.data.taxAmount,
+            total: event.data.totalAmount,
+          },
+          userId: event.data.userId,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: `redis_${Date.now()}`,
+      });
+
+      logger.info("✅ Order confirmation email queued", {
+        orderId: event.data.orderId,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process ORDER_PLACED event:", error);
+    }
+  }
+
+  /**
+   * @notice Processes order cancelled events for cancellation emails
+   * @dev Queues order cancellation email with cancellation details
+   * @param event Order cancelled event with cancellation details
+   */
+  private async handleOrderCancelled(event: OrderCancelledEvent) {
+    try {
+      logger.info("🔄 Received ORDER_CANCELLED event", {
+        orderId: event.data.orderId,
+        status: event.data.status,
+        requiresRefund: event.data.requiresRefund,
+      });
+
+      // PUBLISH to RabbitMQ queue
+      await rabbitMQService.publishMessage("order_emails", {
+        id: `order_cancelled_${Date.now()}`,
+        email: event.data.userId, // Assuming userId is the email, adjust if needed
+        type: "ORDER_CANCELLED",
+        data: {
+          orderId: event.data.orderId,
+          status: event.data.status,
+          requiresRefund: event.data.requiresRefund,
+          previousStatus: event.data.previousStatus,
+          items: event.data.items,
+          reason: event.data.reason,
+          userId: event.data.userId,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: `redis_${Date.now()}`,
+      });
+
+      logger.info("✅ Order cancellation email queued", {
+        orderId: event.data.orderId,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process ORDER_CANCELLED event:", error);
     }
   }
 

@@ -33,7 +33,48 @@ export interface UserLoggedInEvent extends BaseEvent {
   };
 }
 
+export interface OrderPlacedEvent extends BaseEvent {
+  type: "ORDER_PLACED";
+  data: {
+    orderId: string;
+    status: string;
+    userId: string;
+    items: Array<{
+      productId: string;
+      productName: string;
+      productSku: string | null;
+      quantity: number;
+      unitPrice: string;
+    }>;
+    subtotal: number;
+    shippingCost: number;
+    taxAmount: number;
+    totalAmount: number;
+  };
+}
+
+export interface OrderCancelledEvent extends BaseEvent {
+  type: "ORDER_CANCELLED";
+  data: {
+    orderId: string;
+    status: string;
+    requiresRefund: boolean;
+    previousStatus: string;
+    items: Array<{
+      productId: string;
+      productName: string;
+      productSku: string | null;
+      quantity: number;
+      unitPrice: string;
+    }>;
+    userId: string;
+    reason?: string;
+  };
+}
+
 export type NotificationEvent =
   | UserRegisteredEvent
   | PasswordResetEvent
-  | UserLoggedInEvent;
+  | UserLoggedInEvent
+  | OrderPlacedEvent
+  | OrderCancelledEvent;

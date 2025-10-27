@@ -27,8 +27,8 @@ export interface ProductPriceChange extends BaseEvent {
   data: ProductData;
 }
 
-export interface OrderCompleted extends BaseEvent {
-  type: "ORDER_COMPLETED";
+export interface OrderPlaced extends BaseEvent {
+  type: "ORDER_PLACED";
   data: {
     orderId: string;
     userId: string;
@@ -39,4 +39,4 @@ export type CartEvents =
   | ProductStatusChange
   | ProductDeleted
   | ProductPriceChange
-  | OrderCompleted;
+  | OrderPlaced;

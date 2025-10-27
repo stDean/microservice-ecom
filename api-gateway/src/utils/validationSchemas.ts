@@ -242,23 +242,10 @@ export const createOrderSchema = z
       zipCode: z.string().min(1, "Zip code is required").max(20),
       country: z.string().min(1, "Country is required").max(50),
     }),
-    paymentMethod: z
-      .object({
-        type: z.enum(["pay_now", "cash_on_delivery"]),
-        paymentMethodId: z.string().optional(),
-      })
-      .refine(
-        (data) => {
-          if (data.type === "pay_now" && !data.paymentMethodId) {
-            return false;
-          }
-          return true;
-        },
-        {
-          message: "Payment method ID is required when type is 'pay_now'",
-          path: ["paymentMethodId"],
-        }
-      ),
+    paymentMethod: z.object({
+      type: z.enum(["pay_now", "cash_on_delivery"]),
+      paymentMethodId: z.string().optional(),
+    }),
     cartItems: z
       .array(
         z.object({

@@ -16,6 +16,7 @@ export const OrderCtrl = {
    * POST /orders
    */
   checkOut: async (req: Request, res: Response) => {
+    // paymentMethod : {type: "pay_now" | cash_on_delivery}
     const { shippingAddress, paymentMethod, cartItems } = req.body;
     const userId = req.user?.id;
 
@@ -60,7 +61,7 @@ export const OrderCtrl = {
       // Create order items
       const orderItemsData = cartItems.map((item: any) => ({
         orderId: newOrder.id,
-        productId: parseInt(item.itemId),
+        productId: item.itemId,
         productName: item.name,
         productSku: item.sku || null,
         quantity: item.quantity,
@@ -95,6 +96,18 @@ export const OrderCtrl = {
       data: {
         orderId: order.id,
         status: order.currentStatus,
+        userId: userId!,
+        items: cartItems.map((item: any) => ({
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          unitPrice: item.unitPriceAtPurchase,
+        })),
+        subtotal,
+        shippingCost,
+        taxAmount,
+        totalAmount,
       },
     });
 
@@ -170,7 +183,7 @@ export const OrderCtrl = {
     const orderDetails = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.id, parseInt(id)), eq(orders.userId, userId!)))
+      .where(and(eq(orders.id, id), eq(orders.userId, userId!)))
       .then((rows) => rows[0]);
 
     if (!orderDetails) {
@@ -183,13 +196,13 @@ export const OrderCtrl = {
     const items = await db
       .select()
       .from(orderItems)
-      .where(eq(orderItems.orderId, parseInt(id)));
+      .where(eq(orderItems.orderId, id));
 
     // Get status history
     const statusHistory = await db
       .select()
       .from(orderStatusHistory)
-      .where(eq(orderStatusHistory.orderId, parseInt(id)))
+      .where(eq(orderStatusHistory.orderId, id))
       .orderBy(desc(orderStatusHistory.timestamp));
 
     return res.status(StatusCodes.OK).json({
@@ -215,7 +228,7 @@ export const OrderCtrl = {
     const order = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.id, parseInt(id)), eq(orders.userId, userId!)))
+      .where(and(eq(orders.id, id), eq(orders.userId, userId!)))
       .then((rows) => rows[0]);
 
     if (!order) {
@@ -224,11 +237,46 @@ export const OrderCtrl = {
       });
     }
 
-    // Check if order can be cancelled
-    if (order.currentStatus !== "PENDING") {
+    // Get order items for the event
+    const items = await db
+      .select()
+      .from(orderItems)
+      .where(eq(orderItems.orderId, id));
+
+    // Check cancellation rules based on your business logic
+    if (
+      order.currentStatus === "SHIPPED" ||
+      order.currentStatus === "DELIVERED"
+    ) {
       return res.status(StatusCodes.BAD_REQUEST).json({
-        error: `Cannot cancel order with status: ${order.currentStatus}`,
+        error: `Cannot cancel order that has been ${order.currentStatus.toLowerCase()}`,
       });
+    }
+
+    if (
+      order.currentStatus === "CANCELLED" ||
+      order.currentStatus === "REFUNDED"
+    ) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        error: `Order is already ${order.currentStatus.toLowerCase()}`,
+      });
+    }
+
+    // Determine cancellation type and reason
+    let cancellationType: (typeof orderStatusEnum.enumValues)[number] =
+      "CANCELLED";
+    let cancellationReason = reason || "Cancelled by user";
+    let requiresRefund = false;
+
+    if (order.paymentTransactionId && order.currentStatus === "PAID") {
+      // Paid but not shipped - cancel and refund
+      cancellationType = "REFUNDED";
+      cancellationReason = "Order cancelled - refund processed";
+      requiresRefund = true;
+    } else if (order.currentStatus === "PENDING") {
+      // Pending order - simple cancellation
+      cancellationType = "CANCELLED";
+      cancellationReason = reason || "Cancelled by user";
     }
 
     // Update order status and add to history
@@ -236,31 +284,62 @@ export const OrderCtrl = {
       await tx
         .update(orders)
         .set({
-          currentStatus: "CANCELLED",
+          currentStatus: cancellationType,
           updatedAt: new Date(),
         })
-        .where(eq(orders.id, parseInt(id)));
+        .where(eq(orders.id, id));
 
       await tx.insert(orderStatusHistory).values({
-        orderId: parseInt(id),
-        status: "CANCELLED",
-        reason: reason || "Cancelled by user",
+        orderId: id,
+        status: cancellationType,
+        reason: cancellationReason,
       });
     });
 
+    // Publish appropriate event
+    if (requiresRefund) {
+      eventPublisher.publishEvent({
+        type: "ORDER_REFUND_REQUESTED",
+        timestamp: new Date(),
+        version: "1.0.0",
+        source: "order-service",
+        data: {
+          orderId: order.id,
+          paymentTransactionId: order.paymentTransactionId,
+          amount: order.totalAmount,
+          reason: "Order cancellation",
+        },
+      });
+    }
+
     eventPublisher.publishEvent({
-      type: "ORDER_CANCELED",
+      type: "ORDER_CANCELLED",
       timestamp: new Date(),
       version: "1.0.0",
       source: "order-service",
       data: {
         orderId: order.id,
-        status: order.currentStatus,
+        status: cancellationType,
+        requiresRefund: requiresRefund,
+        previousStatus: order.currentStatus,
+        items: items.map((item) => ({
+          productId: item.productId,
+          productName: item.productName,
+          productSku: item.productSku,
+          quantity: item.quantity,
+          unitPrice: item.unitPriceAtPurchase,
+        })),
+        userId,
+        reason,
       },
     });
 
     return res.status(StatusCodes.OK).json({
-      message: `Order ${id} canceled.`,
+      message: `Order ${id} ${
+        requiresRefund ? "cancelled and refund initiated" : "cancelled"
+      }.`,
+      cancellationType: cancellationType,
+      refundInitiated: requiresRefund,
     });
   },
 
@@ -268,67 +347,67 @@ export const OrderCtrl = {
    * Payment Service Webhook
    * POST /orders/webhook/payment
    */
-  paymentWebhook: async (req: Request, res: Response) => {
-    const { orderId, paymentIntentId, status, secret } = req.body;
+  // paymentWebhook: async (req: Request, res: Response) => {
+  //   const { orderId, paymentIntentId, status, secret } = req.body;
 
-    // Check if order exists
-    const order = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, orderId))
-      .then((rows) => rows[0]);
+  //   // Check if order exists
+  //   const order = await db
+  //     .select()
+  //     .from(orders)
+  //     .where(eq(orders.id, orderId))
+  //     .then((rows) => rows[0]);
 
-    if (!order) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        error: "Order not found",
-      });
-    }
+  //   if (!order) {
+  //     return res.status(StatusCodes.NOT_FOUND).json({
+  //       error: "Order not found",
+  //     });
+  //   }
 
-    let newStatus: string;
-    let orderStatus: (typeof orderStatusEnum.enumValues)[number];
-    let reason: string;
+  //   let newStatus: string;
+  //   let orderStatus: (typeof orderStatusEnum.enumValues)[number];
+  //   let reason: string;
 
-    switch (status) {
-      case "succeeded":
-        orderStatus = "PAID";
-        newStatus = "PAID";
-        reason = "Payment confirmed via webhook";
-        break;
-      case "failed":
-        orderStatus = "CANCELLED";
-        newStatus = "CANCELLED";
-        reason = "Payment failed via webhook";
-        break;
-      default:
-        return res.status(StatusCodes.BAD_REQUEST).json({
-          error: `Unknown payment status: ${status}`,
-        });
-    }
+  //   switch (status) {
+  //     case "succeeded":
+  //       orderStatus = "PAID";
+  //       newStatus = "PAID";
+  //       reason = "Payment confirmed via webhook";
+  //       break;
+  //     case "failed":
+  //       orderStatus = "CANCELLED";
+  //       newStatus = "CANCELLED";
+  //       reason = "Payment failed via webhook";
+  //       break;
+  //     default:
+  //       return res.status(StatusCodes.BAD_REQUEST).json({
+  //         error: `Unknown payment status: ${status}`,
+  //       });
+  //   }
 
-    // Update order status and payment reference
-    await db.transaction(async (tx) => {
-      await tx
-        .update(orders)
-        .set({
-          currentStatus: orderStatus,
-          paymentTransactionId: paymentIntentId,
-          updatedAt: new Date(),
-        })
-        .where(eq(orders.id, orderId));
+  //   // Update order status and payment reference
+  //   await db.transaction(async (tx) => {
+  //     await tx
+  //       .update(orders)
+  //       .set({
+  //         currentStatus: orderStatus,
+  //         paymentTransactionId: paymentIntentId,
+  //         updatedAt: new Date(),
+  //       })
+  //       .where(eq(orders.id, orderId));
 
-      await tx.insert(orderStatusHistory).values({
-        orderId,
-        status: newStatus,
-        reason: reason,
-      });
-    });
+  //     await tx.insert(orderStatusHistory).values({
+  //       orderId,
+  //       status: newStatus,
+  //       reason: reason,
+  //     });
+  //   });
 
-    return res.status(StatusCodes.OK).json({
-      message: "Order payment status updated",
-      orderId,
-      newStatus,
-    });
-  },
+  //   return res.status(StatusCodes.OK).json({
+  //     message: "Order payment status updated",
+  //     orderId,
+  //     newStatus,
+  //   });
+  // },
 
   /**
    * Internal/Webhook Route to update order status

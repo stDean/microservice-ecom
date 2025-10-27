@@ -1,0 +1,57 @@
+services:
+  order-service:
+    build:
+      context: .
+    image: order_service_image:1.0
+    container_name: order_service
+    ports:
+      - "3006:3006"
+    networks:
+      - order-net
+    depends_on:
+      order-migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3006/api/v1/orders/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  order-db:
+    image: postgres
+    restart: always
+    shm_size: 128mb
+    networks:
+      - order-net
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d order_db}"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+
+  order-migrate:
+    build: 
+      context: .
+      args:
+        - NODE_ENV=development
+      target: builder
+    command: ["npm", "run", "db:push"]
+    networks:
+      - order-net
+    depends_on:
+      order-db: 
+        condition: service_healthy
+    
+  redis:
+    image: redis
+    networks:
+      - order-net
+
+networks:
+  order-net:
+    driver: bridge

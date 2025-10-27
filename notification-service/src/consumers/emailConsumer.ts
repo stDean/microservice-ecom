@@ -89,6 +89,45 @@ class EmailConsumer {
         }
       );
 
+      // Start consuming order emails
+      await rabbitMQService.consumeMessages("order_emails", async (message) => {
+        logger.info("📦 Processing order email from queue", {
+          email: message.email,
+          type: message.type,
+          queue: "order_emails",
+          messageId: message.id,
+        });
+
+        try {
+          switch (message.type) {
+            case "ORDER_PLACED":
+              await emailService.sendOrderConfirmationEmail(
+                message.email,
+                message.data
+              );
+              break;
+            case "ORDER_CANCELLED":
+              await emailService.sendOrderCancellationEmail(
+                message.email,
+                message.data
+              );
+              break;
+            default:
+              logger.warn("Unknown order email type", { type: message.type });
+          }
+
+          logger.info("✅ Order email sent successfully", {
+            email: message.email,
+            type: message.type,
+          });
+        } catch (error) {
+          logger.error("❌ Failed to send order email:", error, {
+            email: message.email,
+            type: message.type,
+          });
+        }
+      });
+
       this.isRunning = true;
       this.starting = false;
 

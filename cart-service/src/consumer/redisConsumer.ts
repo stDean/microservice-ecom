@@ -3,7 +3,7 @@ import {
   ProductDeleted,
   ProductStatusChange,
   ProductPriceChange,
-  OrderCompleted,
+  OrderPlaced,
 } from "../redis/types";
 import { logger } from "../utils/logger";
 import { CartCache } from "../utils/cartCache";
@@ -45,8 +45,8 @@ export class RedisEventConsumer {
         this.handleProductPriceChange(event as ProductPriceChange)
       );
 
-      await eventSubscriber.subscribeToEvent("ORDER_COMPLETED", (event) =>
-        this.handleOrderCompleted(event as OrderCompleted)
+      await eventSubscriber.subscribeToEvent("ORDER_PLACED", (event) =>
+        this.handleOrderPlaced(event as OrderPlaced)
       );
 
       this.isRunning = true;
@@ -61,7 +61,7 @@ export class RedisEventConsumer {
    * @notice Handles order completion events
    * @dev Clears the user's cart when their order is completed
    */
-  private async handleOrderCompleted(event: OrderCompleted) {
+  private async handleOrderPlaced(event: OrderPlaced) {
     try {
       logger.info("Processing ORDER_COMPLETED event", {
         orderId: event.data.orderId,

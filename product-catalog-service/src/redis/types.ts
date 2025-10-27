@@ -5,22 +5,35 @@ export interface BaseEvent {
   version: string;
 }
 
-interface OrderData {
-  orderid: string;
-  status: string;
-}
-
 export interface OrderPlaced extends BaseEvent {
   type: "ORDER_PLACED";
-  data: OrderData;
+  data: {
+    orderId: string;
+    status: string;
+    userId: string;
+    items: Array<{
+      productId: string;
+      productName: string;
+      productSku: string | null;
+      quantity: number;
+      unitPrice: string;
+    }>;
+  };
 }
 
-export interface OrderCompleted extends BaseEvent {
-  type: "ORDER_COMPLETED";
-  data: OrderData;
-}
-
-export interface OrderCanceled extends BaseEvent {
-  type: "ORDER_CANCELED";
-  data: OrderData;
+export interface OrderCancelled extends BaseEvent {
+  type: "ORDER_CANCELLED";
+  data: {
+    orderId: string;
+    status: string;
+    requiresRefund: boolean;
+    previousStatus: string;
+    items: Array<{
+      productId: string;
+      productName: string;
+      productSku: string | null;
+      quantity: number;
+      unitPrice: string;
+    }>;
+  };
 }
