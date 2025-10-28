@@ -19,3 +19,6 @@
 /order-service/node_modules
 /order-service/.env
 /order-service/.dockerignore
+/payment-service/node_modules
+/payment-service/.env
+/payment-service/.dockerignore
