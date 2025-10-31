@@ -9,6 +9,7 @@ import {
 } from "../db/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 import { eventPublisher } from "../redis/publisher";
+import { BadRequestError, NotFoundError } from "../errors";
 
 export const OrderCtrl = {
   /**
@@ -105,6 +106,7 @@ export const OrderCtrl = {
         shippingCost,
         taxAmount,
         totalAmount,
+        email: req.user?.email || "",
       },
     });
 
@@ -225,11 +227,7 @@ export const OrderCtrl = {
       .where(and(eq(orders.id, id), eq(orders.userId, userId!)))
       .then((rows) => rows[0]);
 
-    if (!order) {
-      return res.status(StatusCodes.NOT_FOUND).json({
-        error: "Order not found",
-      });
-    }
+    if (!order) throw new NotFoundError(`Order not found`);
 
     // Get order items for the event
     const items = await db
@@ -242,18 +240,18 @@ export const OrderCtrl = {
       order.currentStatus === "SHIPPED" ||
       order.currentStatus === "DELIVERED"
     ) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        error: `Cannot cancel order that has been ${order.currentStatus.toLowerCase()}`,
-      });
+      throw new BadRequestError(
+        `Cannot cancel order that has been shipped or delivered`
+      );
     }
 
     if (
       order.currentStatus === "CANCELLED" ||
       order.currentStatus === "REFUNDED"
     ) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
-        error: `Order is already ${order.currentStatus.toLowerCase()}`,
-      });
+      throw new BadRequestError(
+        `Order is already ${order.currentStatus.toLowerCase()}`
+      );
     }
 
     // Determine cancellation type and reason
@@ -302,6 +300,7 @@ export const OrderCtrl = {
           paymentTransactionId: order.paymentTransactionId,
           amount: order.totalAmount,
           reason: "Order cancellation",
+          email: req.user?.email || "",
         },
       });
     }
@@ -325,6 +324,7 @@ export const OrderCtrl = {
         })),
         userId,
         reason,
+        email: req.user?.email || "",
       },
     });
 

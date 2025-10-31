@@ -19,6 +19,9 @@ interface EmailTemplateData {
   };
   requiresRefund?: boolean;
   reason?: string;
+  paymentTransactionId?: string;
+  amount?: number;
+  message?: string;
 }
 
 class EmailTemplates {
@@ -37,6 +40,9 @@ class EmailTemplates {
           .order-table th, .order-table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
           .order-table th { background-color: #f8f9fa; }
           .total-row { font-weight: bold; background-color: #f8f9fa; }
+          .success { color: #28a745; }
+          .error { color: #dc3545; }
+          .info { color: #17a2b8; }
         </style>
       </head>
       <body>
@@ -190,6 +196,62 @@ class EmailTemplates {
       <div class="footer">
         <p>If this cancellation was a mistake or you have any questions, please contact our support team immediately.</p>
         <p>We hope to see you again soon!</p>
+      </div>
+    `);
+  }
+
+  paymentSuccess(data: EmailTemplateData): string {
+    return this.baseTemplate(`
+      <h1 class="success">Payment Successful! ✅</h1>
+      <p>Your payment has been processed successfully. Thank you for your purchase!</p>
+      
+      <h3>Payment Details</h3>
+      <p><strong>Order ID:</strong> ${data.orderId}</p>
+      <p><strong>Transaction ID:</strong> ${data.paymentTransactionId}</p>
+      <p><strong>Amount Paid:</strong> $${data.amount?.toFixed(2)}</p>
+      ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ""}
+      
+      <div class="footer">
+        <p>You will receive a separate order confirmation email with your order details.</p>
+        <p>If you have any questions about your payment, please contact our support team.</p>
+      </div>
+    `);
+  }
+
+  paymentFailure(data: EmailTemplateData): string {
+    return this.baseTemplate(`
+      <h1 class="error">Payment Failed ❌</h1>
+      <p>We were unable to process your payment. Please try again or use a different payment method.</p>
+      
+      <h3>Payment Details</h3>
+      <p><strong>Order ID:</strong> ${data.orderId}</p>
+      <p><strong>Payment ID:</strong> ${data.paymentTransactionId}</p>
+      
+      <div class="footer">
+        <p>Your order has been placed on hold and will be processed once payment is successful.</p>
+        <p>If you continue to experience issues, please contact our support team.</p>
+      </div>
+    `);
+  }
+
+  paymentRefunded(data: EmailTemplateData): string {
+    return this.baseTemplate(`
+      <h1 class="info">Payment Refunded 🔄</h1>
+      <p>Your refund has been processed successfully.</p>
+      
+      <h3>Refund Details</h3>
+      <p><strong>Transaction ID:</strong> ${data.paymentTransactionId}</p>
+      <p><strong>Amount Refunded:</strong> $${data.amount?.toFixed(2)}</p>
+      ${data.message ? `<p><strong>Message:</strong> ${data.message}</p>` : ""}
+      ${
+        data.orderId
+          ? `<p><strong>Related Order ID:</strong> ${data.orderId}</p>`
+          : ""
+      }
+      
+      <div class="footer">
+        <p>The refund may take 5-7 business days to appear in your account.</p>
+        <p>If you have any questions about your refund, please contact our support team.</p>
       </div>
     `);
   }

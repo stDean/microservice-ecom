@@ -30,6 +30,7 @@ export interface UserLoggedInEvent extends BaseEvent {
     userId: string;
     ipAddress: string;
     userAgent: string;
+    email: string;
   };
 }
 
@@ -50,6 +51,7 @@ export interface OrderPlacedEvent extends BaseEvent {
     shippingCost: number;
     taxAmount: number;
     totalAmount: number;
+    email: string;
   };
 }
 
@@ -69,6 +71,33 @@ export interface OrderCancelledEvent extends BaseEvent {
     }>;
     userId: string;
     reason?: string;
+    email: string;
+  };
+}
+
+export interface PaymentProcessedEvent extends BaseEvent {
+  type: "PAYMENT_PROCESSED";
+  data: {
+    paymentTransactionId: string;
+    message: string;
+    orderId: string;
+    userId: string;
+    email: string;
+  };
+}
+
+export interface PaymentFailedEvent extends BaseEvent {
+  type: "PAYMENT_FAILED";
+  data: { paymentId: string; orderId: string; userId: string; email: string };
+}
+
+export interface PaymentRefundedEvent extends BaseEvent {
+  type: "PAYMENT_REFUNDED";
+  data: {
+    paymentTransactionId: string;
+    amount: number;
+    message: string;
+    email: string;
   };
 }
 
@@ -77,4 +106,7 @@ export type NotificationEvent =
   | PasswordResetEvent
   | UserLoggedInEvent
   | OrderPlacedEvent
-  | OrderCancelledEvent;
+  | OrderCancelledEvent
+  | PaymentProcessedEvent
+  | PaymentFailedEvent
+  | PaymentRefundedEvent;

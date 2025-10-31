@@ -213,6 +213,111 @@ class EmailService {
       throw error;
     }
   }
+
+  /**
+   * @notice Sends payment success confirmation email to user
+   * @dev Sends payment confirmation with transaction details
+   * @param to Recipient email address
+   * @param paymentData Payment details including transaction ID and amount
+   * @return Promise<void>
+   * @throws Error if email fails to send after retries
+   */
+  async sendPaymentSuccessEmail(to: string, paymentData: any) {
+    const mailOptions = {
+      from: `"E-Commerce App" <${
+        process.env.MAIL_FROM || "no-reply@ecommerce.com"
+      }>`,
+      to,
+      subject: `Payment Successful - Order #${paymentData.orderId}`,
+      html: emailTemplates.paymentSuccess(paymentData),
+    };
+
+    try {
+      await this.sendEmailWithRetry(mailOptions);
+      logger.info("Payment success email sent successfully", {
+        email: to,
+        orderId: paymentData.orderId,
+        transactionId: paymentData.paymentTransactionId,
+      });
+    } catch (error) {
+      logger.error("Failed to send payment success email after retries", {
+        email: to,
+        orderId: paymentData.orderId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * @notice Sends payment failure notification email to user
+   * @dev Informs user about payment failure and provides next steps
+   * @param to Recipient email address
+   * @param paymentData Payment failure details
+   * @return Promise<void>
+   * @throws Error if email fails to send after retries
+   */
+  async sendPaymentFailureEmail(to: string, paymentData: any) {
+    const mailOptions = {
+      from: `"E-Commerce App" <${
+        process.env.MAIL_FROM || "no-reply@ecommerce.com"
+      }>`,
+      to,
+      subject: `Payment Failed - Order #${paymentData.orderId}`,
+      html: emailTemplates.paymentFailure(paymentData),
+    };
+
+    try {
+      await this.sendEmailWithRetry(mailOptions);
+      logger.info("Payment failure email sent successfully", {
+        email: to,
+        orderId: paymentData.orderId,
+        paymentId: paymentData.paymentId,
+      });
+    } catch (error) {
+      logger.error("Failed to send payment failure email after retries", {
+        email: to,
+        orderId: paymentData.orderId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * @notice Sends payment refund confirmation email to user
+   * @dev Confirms refund processing with amount and transaction details
+   * @param to Recipient email address
+   * @param paymentData Refund details including amount and transaction ID
+   * @return Promise<void>
+   * @throws Error if email fails to send after retries
+   */
+  async sendPaymentRefundedEmail(to: string, paymentData: any) {
+    const mailOptions = {
+      from: `"E-Commerce App" <${
+        process.env.MAIL_FROM || "no-reply@ecommerce.com"
+      }>`,
+      to,
+      subject: `Refund Processed - Transaction #${paymentData.paymentTransactionId}`,
+      html: emailTemplates.paymentRefunded(paymentData),
+    };
+
+    try {
+      await this.sendEmailWithRetry(mailOptions);
+      logger.info("Payment refund email sent successfully", {
+        email: to,
+        transactionId: paymentData.paymentTransactionId,
+        amount: paymentData.amount,
+      });
+    } catch (error) {
+      logger.error("Failed to send payment refund email after retries", {
+        email: to,
+        transactionId: paymentData.paymentTransactionId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
 }
 
 /**

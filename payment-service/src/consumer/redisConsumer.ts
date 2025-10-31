@@ -1,3 +1,4 @@
+import { eventPublisher } from "../redis/publisher";
 import { eventSubscriber } from "../redis/subscriber";
 import { RefundPaymentEvent } from "../redis/types";
 import { PaymentService } from "../service/payment.s";
@@ -45,13 +46,24 @@ export class RedisEventConsumer {
         amount: event.data.amount,
       });
 
-      // check if the payment exists and the amount match
-      // delete it from change the status to refunded
-      // send a notification event.
       const result = await paymentService.processRefund(
         event.data.paymentTransactionId,
         event.data.amount
       );
+
+
+      eventPublisher.publishEvent({
+        type: "PAYMENT_REFUNDED",
+        version: "1.0.0",
+        timestamp: new Date(),
+        source: "payment-service",
+        data: {
+          paymentTransactionId: event.data.paymentTransactionId,
+          amount: event.data.amount,
+          message: "Payment refunded successfully",
+          email: event.data.email || "",
+        },
+      });
 
       logger.info("✅ Refund successful", {
         paymentId: event.data.paymentTransactionId,

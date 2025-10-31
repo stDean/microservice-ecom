@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import db from "../db";
+import { orders, orderStatusHistory } from "../db/schema";
+import { NotFoundError } from "../errors";
 import { eventSubscriber } from "../redis/subscriber";
 import { PaymentProcessedEvent } from "../redis/types";
 import { logger } from "../utils/logger";
-import { orders } from "../db/schema";
-import { NotFoundError } from "../errors";
 
 /**
  * @title Redis Event Consumer
@@ -27,7 +27,7 @@ export class RedisEventConsumer {
 
     try {
       // Subscribe to Redis events
-      await eventSubscriber.subscribeToEvent("EMAIL_VERIFIED", (event) =>
+      await eventSubscriber.subscribeToEvent("PAYMENT_PROCESSED", (event) =>
         this.handlePaymentProcessedEvent(event as PaymentProcessedEvent)
       );
 
@@ -46,37 +46,47 @@ export class RedisEventConsumer {
         orderId: event.data.orderId,
       });
 
-      const order = await db
-        .select()
-        .from(orders)
-        .where(
-          and(
-            eq(orders.id, event.data.orderId),
-            eq(orders.userId, event.data.userId)
+      await db.transaction(async (tx) => {
+        const order = await tx
+          .select()
+          .from(orders)
+          .where(
+            and(
+              eq(orders.id, event.data.orderId),
+              eq(orders.userId, event.data.userId)
+            )
           )
-        )
-        .limit(1);
+          .limit(1);
 
-      if (order.length === 0) {
-        throw new NotFoundError(
-          `Order with ID ${event.data.orderId} not found`
-        );
-      }
+        if (order.length === 0) {
+          throw new NotFoundError(
+            `Order with ID ${event.data.orderId} not found`
+          );
+        }
 
-      // update order status to refunded
-      await db
-        .update(orders)
-        .set({
-          currentStatus: "PAID",
-          awaitingDelivery: true,
-          paymentTransactionId: event.data.paymentTransactionId,
-        })
-        .where(
-          and(
-            eq(orders.id, event.data.orderId),
-            eq(orders.userId, event.data.userId)
-          )
-        );
+        // update order status to paid
+        await tx
+          .update(orders)
+          .set({
+            currentStatus: "PAID",
+            awaitingDelivery: true,
+            paymentTransactionId: event.data.paymentTransactionId,
+          })
+          .where(
+            and(
+              eq(orders.id, event.data.orderId),
+              eq(orders.userId, event.data.userId)
+            )
+          );
+
+        await tx
+          .update(orderStatusHistory)
+          .set({
+            status: "PAID",
+            reason: "Payment processed successfully",
+          })
+          .where(eq(orderStatusHistory.orderId, event.data.orderId));
+      });
 
       logger.info("✅ Payment successful", {
         paymentId: event.data.paymentTransactionId,

@@ -6,6 +6,9 @@ import {
   UserRegisteredEvent,
   OrderPlacedEvent,
   OrderCancelledEvent,
+  PaymentProcessedEvent,
+  PaymentFailedEvent,
+  PaymentRefundedEvent,
 } from "../events/types";
 
 /**
@@ -36,6 +39,36 @@ export class RedisEventConsumer {
       await eventSubscriber.subscribeToEvent(
         "PASSWORD_RESET_REQUESTED",
         (event) => this.handlePasswordReset(event as PasswordResetEvent)
+      );
+
+      // Subscribe to all Redis events
+      await eventSubscriber.subscribeToEvent("USER_REGISTERED", (event) =>
+        this.handleUserRegistered(event as UserRegisteredEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent(
+        "PASSWORD_RESET_REQUESTED",
+        (event) => this.handlePasswordReset(event as PasswordResetEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("ORDER_PLACED", (event) =>
+        this.handleOrderPlaced(event as OrderPlacedEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("ORDER_CANCELLED", (event) =>
+        this.handleOrderCancelled(event as OrderCancelledEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("PAYMENT_PROCESSED", (event) =>
+        this.handlePaymentProcessed(event as PaymentProcessedEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("PAYMENT_FAILED", (event) =>
+        this.handlePaymentFailed(event as PaymentFailedEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("PAYMENT_REFUNDED", (event) =>
+        this.handlePaymentRefunded(event as PaymentRefundedEvent)
       );
 
       this.isRunning = true;
@@ -138,7 +171,7 @@ export class RedisEventConsumer {
       // PUBLISH to RabbitMQ queue
       await rabbitMQService.publishMessage("order_emails", {
         id: `order_placed_${Date.now()}`,
-        email: event.data.userId, // Assuming userId is the email, adjust if needed
+        email: event.data.email, // Assuming userId is the email, adjust if needed
         type: "ORDER_PLACED",
         data: {
           orderId: event.data.orderId,
@@ -180,7 +213,7 @@ export class RedisEventConsumer {
       // PUBLISH to RabbitMQ queue
       await rabbitMQService.publishMessage("order_emails", {
         id: `order_cancelled_${Date.now()}`,
-        email: event.data.userId, // Assuming userId is the email, adjust if needed
+        email: event.data.email, // Assuming userId is the email, adjust if needed
         type: "ORDER_CANCELLED",
         data: {
           orderId: event.data.orderId,
@@ -200,6 +233,112 @@ export class RedisEventConsumer {
       });
     } catch (error) {
       logger.error("❌ Failed to process ORDER_CANCELLED event:", error);
+    }
+  }
+
+  /**
+   * @notice Processes payment processed events for success emails
+   * @dev Queues payment success email with transaction details
+   * @param event Payment processed event with transaction details
+   */
+  private async handlePaymentProcessed(event: PaymentProcessedEvent) {
+    try {
+      logger.info("💰 Received PAYMENT_PROCESSED event", {
+        orderId: event.data.orderId,
+        transactionId: event.data.paymentTransactionId,
+      });
+
+      // PUBLISH to RabbitMQ queue
+      await rabbitMQService.publishMessage("payment_emails", {
+        id: `payment_success_${Date.now()}`,
+        email: event.data.email,
+        type: "PAYMENT_SUCCESS",
+        data: {
+          orderId: event.data.orderId,
+          paymentTransactionId: event.data.paymentTransactionId,
+          message: event.data.message,
+          userId: event.data.userId,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: `redis_${Date.now()}`,
+      });
+
+      logger.info("✅ Payment success email queued", {
+        orderId: event.data.orderId,
+        transactionId: event.data.paymentTransactionId,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process PAYMENT_PROCESSED event:", error);
+    }
+  }
+
+  /**
+   * @notice Processes payment failed events for failure emails
+   * @dev Queues payment failure email with failure details
+   * @param event Payment failed event with failure details
+   */
+  private async handlePaymentFailed(event: PaymentFailedEvent) {
+    try {
+      logger.info("❌ Received PAYMENT_FAILED event", {
+        orderId: event.data.orderId,
+        paymentId: event.data.paymentId,
+      });
+
+      // PUBLISH to RabbitMQ queue
+      await rabbitMQService.publishMessage("payment_emails", {
+        id: `payment_failed_${Date.now()}`,
+        email: event.data.email,
+        type: "PAYMENT_FAILED",
+        data: {
+          orderId: event.data.orderId,
+          paymentId: event.data.paymentId,
+          userId: event.data.userId,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: `redis_${Date.now()}`,
+      });
+
+      logger.info("✅ Payment failure email queued", {
+        orderId: event.data.orderId,
+        paymentId: event.data.paymentId,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process PAYMENT_FAILED event:", error);
+    }
+  }
+
+  /**
+   * @notice Processes payment refunded events for refund emails
+   * @dev Queues payment refund email with refund details
+   * @param event Payment refunded event with refund details
+   */
+  private async handlePaymentRefunded(event: PaymentRefundedEvent) {
+    try {
+      logger.info("🔄 Received PAYMENT_REFUNDED event", {
+        transactionId: event.data.paymentTransactionId,
+        amount: event.data.amount,
+      });
+
+      // PUBLISH to RabbitMQ queue
+      await rabbitMQService.publishMessage("payment_emails", {
+        id: `payment_refunded_${Date.now()}`,
+        email: event.data.email,
+        type: "PAYMENT_REFUNDED",
+        data: {
+          paymentTransactionId: event.data.paymentTransactionId,
+          amount: event.data.amount,
+          message: event.data.message,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: `redis_${Date.now()}`,
+      });
+
+      logger.info("✅ Payment refund email queued", {
+        transactionId: event.data.paymentTransactionId,
+        amount: event.data.amount,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process PAYMENT_REFUNDED event:", error);
     }
   }
 

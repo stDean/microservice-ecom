@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { StatusCodes } from "http-status-codes";
 import { PaymentService } from "../service/payment.s";
 import { eventPublisher } from "../redis/publisher";
+import { BadRequestError } from "../errors";
 
 const paymentService = new PaymentService();
 
@@ -9,6 +10,7 @@ export const PaymentCtrl = {
   processPayment: async (req: Request, res: Response) => {
     try {
       const paymentRequest = {
+        orderId: req.body.orderId,
         userId: req.body.userId,
         amount: parseFloat(req.body.amount),
         currency: req.body.currency,
@@ -17,6 +19,23 @@ export const PaymentCtrl = {
       };
 
       const result = await paymentService.processPayment(paymentRequest);
+
+      if (result.success === false) {
+        eventPublisher.publishEvent({
+          type: "PAYMENT_FAILED",
+          version: "1.0.0",
+          timestamp: new Date(),
+          source: "payment-service",
+          data: {
+            paymentId: result.transactionId,
+            orderId: req.body.orderId,
+            userId: req.body.userId,
+            email: req.user?.email || "",
+          },
+        });
+
+        throw new BadRequestError("Payment processing failed");
+      }
 
       // Send a payment success event
       eventPublisher.publishEvent({
@@ -27,6 +46,7 @@ export const PaymentCtrl = {
         data: {
           paymentTransactionId: result.transactionId,
           message: "Payment processed successfully",
+          email: req.user?.email || "",
         },
       });
 
@@ -58,6 +78,7 @@ export const PaymentCtrl = {
           paymentTransactionId: transactionId,
           amount,
           message: "Payment refunded successfully",
+          email: req.user?.email || "",
         },
       });
 
