@@ -8,6 +8,7 @@ import {
   pgEnum,
   index,
   uuid,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -18,6 +19,11 @@ export const orderStatusEnum = pgEnum("order_status", [
   "DELIVERED",
   "CANCELLED",
   "REFUNDED",
+]);
+
+export const paymentTypeEnum = pgEnum("payment_type", [
+  "PAY_NOW",
+  "CASH_ON_DELIVERY",
 ]);
 
 // --- A. Orders Table (The Header) ---
@@ -38,6 +44,8 @@ export const orders = pgTable(
       .default("0.00")
       .notNull(),
     totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+    paymentType: paymentTypeEnum("payment_type").notNull(),
+    awaitingDelivery: boolean("awaiting_delivery").default(false).notNull(),
 
     // Status and Time
     currentStatus: orderStatusEnum("current_status")

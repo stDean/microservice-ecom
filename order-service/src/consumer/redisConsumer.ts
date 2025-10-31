@@ -1,9 +1,10 @@
+import { and, eq } from "drizzle-orm";
+import db from "../db";
 import { eventSubscriber } from "../redis/subscriber";
-import { RefundPaymentEvent } from "../redis/types";
-import { PaymentService } from "../service/payment.s";
+import { PaymentProcessedEvent } from "../redis/types";
 import { logger } from "../utils/logger";
-
-const paymentService = new PaymentService();
+import { orders } from "../db/schema";
+import { NotFoundError } from "../errors";
 
 /**
  * @title Redis Event Consumer
@@ -27,7 +28,7 @@ export class RedisEventConsumer {
     try {
       // Subscribe to Redis events
       await eventSubscriber.subscribeToEvent("EMAIL_VERIFIED", (event) =>
-        this.handleRefundPaymentEvent(event as RefundPaymentEvent)
+        this.handlePaymentProcessedEvent(event as PaymentProcessedEvent)
       );
 
       this.isRunning = true;
@@ -38,29 +39,51 @@ export class RedisEventConsumer {
     }
   }
 
-  private async handleRefundPaymentEvent(event: RefundPaymentEvent) {
+  private async handlePaymentProcessedEvent(event: PaymentProcessedEvent) {
     try {
-      logger.info("📧 Received ORDER_REFUND_REQUESTED event", {
+      logger.info("📧 Received PAYMENT_PROCESSED event", {
         paymentId: event.data.paymentTransactionId,
-        amount: event.data.amount,
+        orderId: event.data.orderId,
       });
 
-      // check if the payment exists and the amount match
-      // delete it from change the status to refunded
-      // send a notification event.
-      const result = await paymentService.processRefund(
-        event.data.paymentTransactionId,
-        event.data.amount
-      );
+      const order = await db
+        .select()
+        .from(orders)
+        .where(
+          and(
+            eq(orders.id, event.data.orderId),
+            eq(orders.userId, event.data.userId)
+          )
+        )
+        .limit(1);
 
-      logger.info("✅ Refund successful", {
+      if (order.length === 0) {
+        throw new NotFoundError(
+          `Order with ID ${event.data.orderId} not found`
+        );
+      }
+
+      // update order status to refunded
+      await db
+        .update(orders)
+        .set({
+          currentStatus: "PAID",
+          awaitingDelivery: true,
+          paymentTransactionId: event.data.paymentTransactionId,
+        })
+        .where(
+          and(
+            eq(orders.id, event.data.orderId),
+            eq(orders.userId, event.data.userId)
+          )
+        );
+
+      logger.info("✅ Payment successful", {
         paymentId: event.data.paymentTransactionId,
-        amount: event.data.amount,
         timestamp: new Date().toISOString(),
-        result,
       });
     } catch (error) {
-      logger.error("❌ Failed to process ORDER_REFUND_REQUESTED event:", {
+      logger.error("❌ Failed to process PAYMENT_PROCESSED event:", {
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
         eventData: event.data,

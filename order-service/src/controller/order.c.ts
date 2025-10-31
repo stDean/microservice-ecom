@@ -34,7 +34,7 @@ export const OrderCtrl = {
     let paymentTransactionId: string | null = null;
 
     if (paymentMethod.type === "pay_now") {
-      orderStatus = "PAID";
+      orderStatus = "PENDING";
       paymentTransactionId = "mock-payment-id";
     }
 
@@ -55,6 +55,10 @@ export const OrderCtrl = {
           shippingAddressJson: JSON.stringify(shippingAddress),
           paymentTransactionId,
           currentStatus: orderStatus,
+          paymentType:
+            paymentMethod.type === "pay_now" ? "PAY_NOW" : "CASH_ON_DELIVERY",
+          awaitingDelivery:
+            paymentMethod.type === "cash_on_delivery" ? true : false,
         })
         .returning();
 
@@ -74,14 +78,7 @@ export const OrderCtrl = {
       await tx.insert(orderStatusHistory).values({
         orderId: newOrder.id,
         status: orderStatus,
-        reason:
-          paymentMethod.type === "pay_now" && orderStatus === "PAID"
-            ? "Payment processed successfully"
-            : `Order created - ${
-                paymentMethod.type === "cash_on_delivery"
-                  ? "Cash on delivery"
-                  : "Awaiting payment"
-              }`,
+        reason: "Order created",
       });
 
       return [newOrder];
@@ -112,10 +109,7 @@ export const OrderCtrl = {
     });
 
     return res.status(StatusCodes.CREATED).json({
-      message:
-        orderStatus === "PAID"
-          ? "Order placed and payment processed successfully!"
-          : "Order placed successfully!",
+      message: "Order created successfully",
       orderId: order.id,
       status: orderStatus,
       orderSummary: {
@@ -127,7 +121,7 @@ export const OrderCtrl = {
       },
       payment: {
         method: paymentMethod.type,
-        status: orderStatus === "PAID" ? "paid" : "pending",
+        status: orderStatus,
       },
     });
   },

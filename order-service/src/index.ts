@@ -6,6 +6,7 @@ import { errorHandlerMiddleware } from "./middleware/errorHandling.m";
 import RedisService from "./redis/client";
 import { logger } from "./utils/logger";
 import db from "./db";
+import { redisEventConsumer } from "./consumer/redisConsumer";
 
 const app = express();
 const PORT = process.env.PORT || 3006;
@@ -42,6 +43,9 @@ const startServer = async () => {
         logger.error("❌ Notification Service Redis connection failed:", error);
       });
 
+    await redisEventConsumer.start();
+    logger.info("Redis event consumer started");
+
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);
     });
@@ -53,6 +57,9 @@ const startServer = async () => {
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
+  logger.info("SIGTERM received, shutting down gracefully");
+  await redisEventConsumer.stop();
+
   const redis = RedisService.getInstance();
   await redis.disconnect();
 
