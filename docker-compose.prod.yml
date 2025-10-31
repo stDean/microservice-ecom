@@ -121,3 +121,18 @@ services:
       - POSTGRES_IP=${ORDER_POSTGRES_IP}
       - REDIS_URL=${REDIS_URL}
     command: ["npm", "run", "start"] 
+
+  payment-service:
+    build: 
+      target: production
+      args:
+        - NODE_ENV=production
+    environment:
+      - NODE_ENV=production
+      - PORT=3006
+      - POSTGRES_USER=${PAYMENT_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${PAYMENT_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${PAYMENT_POSTGRES_DB}
+      - POSTGRES_IP=${PAYMENT_POSTGRES_IP}
+      - REDIS_URL=${REDIS_URL}
+    command: ["npm", "run", "start"] 

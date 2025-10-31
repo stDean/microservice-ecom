@@ -38,6 +38,7 @@ services:
       - PRODUCT_SERVICE_URL=http://product-catalog-service:3004
       - CART_SERVICE_URL=http://cart-service:3005
       - ORDER_SERVICE_URL=http://order-service:3006
+      - PAYMENT_SERVICE_URL=http://payment-service:3007
     # Mount volumes for hot-reloading
     volumes:
       - ./api-gateway:/app
@@ -210,6 +211,34 @@ services:
     volumes:
       - order_db_data:/var/lib/postgresql/data
 
+  payment-service:
+    build:
+      target: builder
+      args:
+        - NODE_ENV=development
+    environment:
+      PORT: 3007
+      NODE_ENV: development
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: payment_db
+      REDIS_URL: redis://redis:6379
+      POSTGRES_IP: payment-db
+    volumes:
+      - ./payment-service/src:/app/src:ro
+      - ./payment-service/package.json:/app/package.json:ro
+      - ./payment-service/tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+  payment-db:
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: example
+      POSTGRES_DB: payment_db
+    volumes:
+      - payment_db_data:/var/lib/postgresql/data
+
 
 # Define volumes for persistent data
 volumes:
@@ -218,4 +247,5 @@ volumes:
   auth_db_data:
   product_db_data:
   order_db_data:
+  payment_db_data:
 

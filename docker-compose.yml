@@ -50,6 +50,19 @@ services:
     networks:
       - ecom_network
 
+  payment-db:
+    image: postgres:15-alpine
+    container_name: payment_db
+    ports:
+      - "5436:5432"  # Different external port
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d order_db"]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+    networks:
+      - ecom_network
+
   # The public entry point for the entire application
   api-gateway:
     container_name: api_gateway
@@ -71,6 +84,8 @@ services:
       product-catalog-service:
         condition: service_healthy
       cart-service: 
+        condition: service_healthy
+      payment-service:
         condition: service_healthy
 
   # Authentication Service
@@ -249,6 +264,40 @@ services:
       - ecom_network
     depends_on:
       order-db: 
+        condition: service_healthy
+
+  payment-service:
+    build:
+      context: ./payment-service
+    container_name: payment_service
+    image: payment_service_image:latest
+    ports:
+      - "3007:3007"
+    networks:
+      - ecom_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3007,path:'/api/v1/payments/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      redis:
+        condition: service_started
+      payment-migrate:
+        condition: service_completed_successfully
+
+  payment-migrate:
+    build: 
+      context: ./payment-service
+      target: builder
+      args:
+        - NODE_ENV=development
+    command: ["npm", "run", "db:push"]
+    networks:
+      - ecom_network
+    depends_on:
+      payment-db: 
         condition: service_healthy
 
 # --- 2. Networks ---

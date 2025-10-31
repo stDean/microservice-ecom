@@ -1,0 +1,31 @@
+services:
+  payment-service:
+    build: 
+      context: .
+      args:
+        - NODE_ENV=development
+      target: builder
+    environment:
+      PORT: 3007
+      NODE_ENV: development
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: payment_db
+      REDIS_URL: redis://redis:6379
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+  payment-db:
+    environment:
+      POSTGRES_PASSWORD: example
+      POSTGRES_USER: user
+      POSTGRES_DB: payment_db
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+
+volumes:
+  payment-db-data:

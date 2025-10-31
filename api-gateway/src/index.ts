@@ -86,6 +86,7 @@ const SERVICES: ServiceConfig = {
   productCatalog: process.env.PRODUCT_SERVICE_URL!,
   carts: process.env.CART_SERVICE_URL!,
   orders: process.env.ORDER_SERVICE_URL!,
+  payments: process.env.PAYMENT_SERVICE_URL!,
 };
 
 console.log("🔧 Service Configuration:", SERVICES);
@@ -102,6 +103,7 @@ const SERVICE_TIMEOUTS: { [key: string]: number } = {
   productCatalog: 20000,
   carts: 20000,
   orders: 20000,
+  payments: 20000,
 };
 
 // Enhanced morgan logging with correlation IDs
@@ -242,6 +244,14 @@ app.use(
   createRateLimit(15 * 60 * 1000, 50),
   circuitBreakerCheck("orders"),
   createServiceProxy(SERVICES.orders, "orders")
+);
+
+app.use(
+  "/payments",
+  authenticateToken,
+  createRateLimit(15 * 60 * 1000, 5),
+  circuitBreakerCheck("payments"),
+  createServiceProxy(SERVICES.payments, "payments")
 );
 
 // =============================================================================
