@@ -1,0 +1,35 @@
+services:
+  shipping-service:
+    build: 
+      context: .
+    image: shipping_service_image:1.0
+    container_name: shipping_service:latest
+    ports:
+      - "3008:3008"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3008/api/v1/shipping/health', (r) => {if(r.statusCode !== 200) throw new Error()})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    depends_on:
+      shipping-db:
+        condition: service_completed_successfully
+      shipping-redis:
+        condition: service_started
+    networks:
+      - shipping-network
+
+  shipping-db:
+    image: mongo
+    networks:
+      - shipping-network
+
+  shipping-redis:
+    image: redis
+    networks:
+      - shipping-network
+
+networks:
+  shipping-network:
+    driver: bridge

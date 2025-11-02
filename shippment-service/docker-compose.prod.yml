@@ -1,0 +1,19 @@
+services:
+   shipping-service:
+    build: 
+      context: .
+      target: production
+    environment:
+      - MONGO_USER=${MONGO_USER}
+      - MONGO_PASSWORD=${MONGO_PASSWORD}
+      - MONGO_IP=${MONGO_IP}
+      - MONGO_PORT=${MONGO_PORT}
+      - NODE_ENV=production
+      - REDIS_URL=${REDIS_URL}
+    command: ["npm", "run", "start"]
+
+   shipping-db:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
+

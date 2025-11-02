@@ -7,13 +7,13 @@ const router = Router();
 
 router.use(userFromHeaders);
 
-router.get("/user/:userId", asyncHandler(ShippingCtrl.getAll));
+router.get("/user/:userId", asyncHandler(ShippingCtrl.getUserShippings));
 
-router.get("/order/:orderId", asyncHandler(ShippingCtrl.getById));
+router.get("/order/:orderId", asyncHandler(ShippingCtrl.getShippingByOrderId));
 
 router.get(
   "/tracking/:trackingNumber",
-  asyncHandler(ShippingCtrl.getByTrackingNumber)
+  asyncHandler(ShippingCtrl.getShippingByTrackingNumber)
 );
 
 export default router;

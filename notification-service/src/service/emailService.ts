@@ -318,6 +318,76 @@ class EmailService {
       throw error;
     }
   }
+
+  /**
+   * @notice Sends shipping notification email to user
+   * @dev Informs user about order shipment with tracking details
+   * @param to Recipient email address
+   * @param shippingData Shipping details including tracking number and estimated delivery
+   * @return Promise<void>
+   * @throws Error if email fails to send after retries
+   */
+  async sendOrderShippedEmail(to: string, shippingData: any) {
+    const mailOptions = {
+      from: `"E-Commerce App" <${
+        process.env.MAIL_FROM || "no-reply@ecommerce.com"
+      }>`,
+      to,
+      subject: `Your Order Has Shipped! - Order #${shippingData.orderId}`,
+      html: emailTemplates.orderShipped(shippingData),
+    };
+
+    try {
+      await this.sendEmailWithRetry(mailOptions);
+      logger.info("Order shipped email sent successfully", {
+        email: to,
+        orderId: shippingData.orderId,
+        trackingNumber: shippingData.trackingNumber,
+      });
+    } catch (error) {
+      logger.error("Failed to send order shipped email after retries", {
+        email: to,
+        orderId: shippingData.orderId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * @notice Sends order delivery confirmation email to user
+   * @dev Confirms order delivery with date and tracking details
+   * @param to Recipient email address
+   * @param deliveryData Delivery details including delivered date and tracking number
+   * @return Promise<void>
+   * @throws Error if email fails to send after retries
+   */
+  async sendOrderDeliveredEmail(to: string, deliveryData: any) {
+    const mailOptions = {
+      from: `"E-Commerce App" <${
+        process.env.MAIL_FROM || "no-reply@ecomerce.com"
+      }>`,
+      to,
+      subject: `Order Delivered - Order #${deliveryData.orderId}`,
+      html: emailTemplates.orderDelivered(deliveryData),
+    };
+    
+    try {
+      await this.sendEmailWithRetry(mailOptions);
+      logger.info("Order delivered email sent successfully", {
+        email: to,
+        orderId: deliveryData.orderId,
+        trackingNumber: deliveryData.trackingNumber,
+      });
+    } catch (error) {
+      logger.error("Failed to send order delivered email after retries", {
+        email: to,
+        orderId: deliveryData.orderId,
+        error: (error as Error).message,
+      });
+      throw error;
+    }
+  }
 }
 
 /**

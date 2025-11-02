@@ -9,6 +9,8 @@ import {
   PaymentProcessedEvent,
   PaymentFailedEvent,
   PaymentRefundedEvent,
+  OrderShippedEvent,
+  OrderDeliveredEvent
 } from "../events/types";
 
 /**
@@ -69,6 +71,14 @@ export class RedisEventConsumer {
 
       await eventSubscriber.subscribeToEvent("PAYMENT_REFUNDED", (event) =>
         this.handlePaymentRefunded(event as PaymentRefundedEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("ORDER_SHIPPED", (event) =>
+        this.handleOrderShipped(event as OrderShippedEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("ORDER_DELIVERED", (event) =>
+        this.handleOrderDelivered(event as OrderDeliveredEvent)
       );
 
       this.isRunning = true;
@@ -339,6 +349,80 @@ export class RedisEventConsumer {
       });
     } catch (error) {
       logger.error("❌ Failed to process PAYMENT_REFUNDED event:", error);
+    }
+  }
+  /**
+   *  @notice Processes order shipped events for shipping emails
+   * @dev Queues order shipping email with shipping details
+   * @param event Order shipped event with shipping details
+   */
+  private async handleOrderShipped(event: OrderShippedEvent) {
+    try {
+      logger.info("🚚 Received ORDER_SHIPPED event", {
+        orderId: event.data.orderId,
+        trackingNumber: event.data.trackingNumber,
+      });
+
+      // PUBLISH to RabbitMQ queue
+      await rabbitMQService.publishMessage("shipping_emails", {
+        id: `order_shipped_${Date.now()}`,
+        email: event.data.email,
+        type: "ORDER_SHIPPED",
+        data: {
+          orderId: event.data.orderId,
+          trackingNumber: event.data.trackingNumber,
+          estimatedDelivery: event.data.estimatedDelivery,
+          shippedAt: event.data.shippedAt,
+          status: event.data.status,
+          userId: event.data.userId,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: `redis_${Date.now()}`,
+      });
+
+      logger.info("✅ Order shipped email queued", {
+        orderId: event.data.orderId,
+        trackingNumber: event.data.trackingNumber,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process ORDER_SHIPPED event:", error);
+    }
+  }
+
+  /**
+   * @notice Processes order delivered events for delivery emails
+   * @dev Queues order delivery email with delivery details
+   * @param event Order delivered event with delivery details
+   */
+  private async handleOrderDelivered(event: OrderDeliveredEvent) {
+    try {
+      logger.info("📦 Received ORDER_DELIVERED event", {
+        orderId: event.data.orderId,
+        trackingNumber: event.data.trackingNumber,
+      });
+
+      // PUBLISH to RabbitMQ queue
+      await rabbitMQService.publishMessage("shipping_emails", {
+        id: `order_delivered_${Date.now()}`,
+        email: event.data.email,
+        type: "ORDER_DELIVERED",
+        data: {
+          orderId: event.data.orderId,
+          trackingNumber: event.data.trackingNumber,
+          status: event.data.status,
+          userId: event.data.userId,
+          deliveredAt: event.data.deliveredAt,
+        },
+        timestamp: new Date().toISOString(),
+        requestId: `redis_${Date.now()}`,
+      });
+
+      logger.info("✅ Order delivered email queued", {
+        orderId: event.data.orderId,
+        trackingNumber: event.data.trackingNumber,
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process ORDER_DELIVERED event:", error);
     }
   }
 

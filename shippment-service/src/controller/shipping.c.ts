@@ -4,14 +4,14 @@ import { Shipping } from "../db/schema";
 import { NotFoundError, BadRequestError } from "../errors";
 
 export const ShippingCtrl = {
-  getAll: async (req: Request, res: Response) => {
+  getUserShippings: async (req: Request, res: Response) => {
     const { userId } = req.params;
     const shipments = await Shipping.find({ userId });
 
     return res.status(StatusCodes.OK).json({ shipments });
   },
 
-  getById: async (req: Request, res: Response) => {
+  getShippingByOrderId: async (req: Request, res: Response) => {
     const { orderId } = req.params;
     const shipment = await Shipping.findOne({ orderId });
     if (!shipment) {
@@ -21,7 +21,7 @@ export const ShippingCtrl = {
     return res.status(StatusCodes.OK).json({ shipment });
   },
 
-  getByTrackingNumber: async (req: Request, res: Response) => {
+  getShippingByTrackingNumber: async (req: Request, res: Response) => {
     const { trackingNumber } = req.params;
     const shipment = await Shipping.findOne({ trackingNumber });
     if (!shipment) {
@@ -29,7 +29,7 @@ export const ShippingCtrl = {
         `Shipment with tracking number ${trackingNumber} not found`
       );
     }
-    
+
     return res.status(StatusCodes.OK).json({ shipment });
   },
 };

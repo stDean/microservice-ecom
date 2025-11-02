@@ -85,6 +85,21 @@ export const OrderCtrl = {
       return [newOrder];
     });
 
+    if (paymentMethod.type === "cash_on_delivery") {
+      eventPublisher.publishEvent({
+        type: "SHIP_PRODUCT_PAY_ON_DELIVERY",
+        version: "1.0.0",
+        timestamp: new Date(),
+        source: "order-service",
+        data: {
+          userId: userId!,
+          shippingAddress,
+          orderId: order.id,
+          email: req.user?.email || "",
+        },
+      });
+    }
+
     // publish event
     eventPublisher.publishEvent({
       type: "ORDER_PLACED",

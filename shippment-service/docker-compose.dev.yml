@@ -1,0 +1,26 @@
+services:
+   shipping-service:
+    build: 
+      context: .
+      target: builder
+    environment:
+      - MONGO_USER=root
+      - MONGO_PASSWORD=example
+      - NODE_ENV=development
+      - REDIS_URL=redis://shipping-redis:6379
+    volumes:
+      - ./src:/app/src:ro
+      - ./package.json:/app/package.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+
+   shipping-db:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - shipping-db:/data/db
+        
+volumes:
+  shipping-db:

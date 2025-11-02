@@ -20,6 +20,7 @@ export interface IShipping extends Document {
     zipCode: string;
     country: string;
   };
+  email: string;
   estimatedDelivery: Date;
   actualDelivery?: Date;
   createdAt: Date;
@@ -43,6 +44,7 @@ const shippingSchema = new Schema(
       zipCode: { type: String, required: true },
       country: { type: String, required: true },
     },
+    email: { type: String, required: true},
     estimatedDelivery: { type: Date, required: true },
     actualDelivery: { type: Date },
   },

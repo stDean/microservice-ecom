@@ -255,6 +255,37 @@ class EmailTemplates {
       </div>
     `);
   }
+
+  orderShipped(data: EmailTemplateData): string {
+    return this.baseTemplate(`
+      <h1>Your Order Has Shipped! 🚚</h1>
+      <p>Good news! Your order <strong>${data.orderId}</strong> has been shipped.</p>
+      
+      <h3>Shipping Details</h3>
+      <p><strong>Tracking Number:</strong> ${data.items?.[0]?.productSku || "N/A"}</p>
+      <p><strong>Estimated Delivery Date:</strong> ${data.status || "N/A"}</p>
+      
+      <div class="footer">
+        <p>You can track your shipment using the tracking number provided.</p>
+        <p>If you have any questions about your order, please contact our support team.</p>
+      </div>
+    `);
+  }
+
+  orderDelivered(data: EmailTemplateData): string {
+    return this.baseTemplate(`
+      <h1>Order Delivered! 📦</h1>
+      <p>Your order <strong>${data.orderId}</strong> has been successfully delivered.</p>
+      
+      <h3>Delivery Details</h3>
+      <p><strong>Delivered At:</strong> ${data.status || "N/A"}</p>
+      
+      <div class="footer">
+        <p>We hope you enjoy your purchase! If you have any questions or need assistance, please contact our support team.</p>
+        <p>Thank you for shopping with us!</p>
+      </div>
+    `);
+  }
 }
 
 export const emailTemplates = new EmailTemplates();

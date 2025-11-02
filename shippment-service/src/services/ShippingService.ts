@@ -1,7 +1,16 @@
-import { IShipping, Shipping, ShippingStatus } from "../db/schema";
+// src/services/ShippingService.ts
+import { Shipping, ShippingStatus } from "../db/schema";
 import { eventPublisher } from "../redis/publisher";
+import { logger } from "../utils/logger";
 
 export class ShippingService {
+  async getPendingDeliveries() {
+    return Shipping.find({
+      status: ShippingStatus.SHIPPED,
+      estimatedDelivery: { $lte: new Date() },
+    });
+  }
+
   async markOrderAsDelivered(orderId: string): Promise<void> {
     try {
       const shipping = await Shipping.findOne({ orderId });
@@ -15,7 +24,6 @@ export class ShippingService {
       await shipping.save();
 
       // Publish ORDER_DELIVERED event
-
       eventPublisher.publishEvent({
         type: "ORDER_DELIVERED",
         version: "1.0.0",
@@ -26,20 +34,15 @@ export class ShippingService {
           userId: shipping.userId,
           trackingNumber: shipping.trackingNumber,
           deliveredAt: shipping.actualDelivery,
+          email: shipping.email, // You might want to store email in shipping record
+          status: shipping.status,
         },
       });
 
-      console.log(`Order ${orderId} delivered`);
+      logger.info(`Order ${orderId} marked as delivered`);
     } catch (error) {
-      console.error("Error marking order as delivered:", error);
+      logger.error(`Error marking order ${orderId} as delivered:`, error);
       throw error;
     }
-  }
-
-  async getPendingDeliveries(): Promise<IShipping[]> {
-    return Shipping.find({
-      status: ShippingStatus.SHIPPED,
-      estimatedDelivery: { $lte: new Date() },
-    });
   }
 }

@@ -47,6 +47,9 @@ export const PaymentCtrl = {
           paymentTransactionId: result.transactionId,
           message: "Payment processed successfully",
           email: req.user?.email || "",
+          orderId: req.body.orderId,
+          userId: req.body.userId,
+          shippingAddress: req.body.shippingAddress,
         },
       });
 

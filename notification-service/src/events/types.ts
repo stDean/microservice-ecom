@@ -101,6 +101,33 @@ export interface PaymentRefundedEvent extends BaseEvent {
   };
 }
 
+export interface OrderShippedEvent extends BaseEvent {
+  type: "ORDER_SHIPPED";
+  data: {
+    orderId: string;
+    userId: string;
+    trackingNumber: string;
+    estimatedDelivery: Date;
+    shippedAt: Date;
+    email: string;
+    status: string;
+  };
+}
+
+export interface OrderDeliveredEvent extends BaseEvent {
+  type: "ORDER_DELIVERED";
+  data: {
+    orderId: string;
+    userId: string;
+    trackingNumber: string;
+    deliveredAt: Date;
+    email: string;
+    status: string;
+  };
+}
+
+
+
 export type NotificationEvent =
   | UserRegisteredEvent
   | PasswordResetEvent
@@ -109,4 +136,5 @@ export type NotificationEvent =
   | OrderCancelledEvent
   | PaymentProcessedEvent
   | PaymentFailedEvent
-  | PaymentRefundedEvent;
+  | PaymentRefundedEvent
+  | OrderShippedEvent | OrderDeliveredEvent;

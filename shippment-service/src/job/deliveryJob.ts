@@ -1,5 +1,7 @@
+// src/job/deliveryJob.ts
 import * as cron from "node-cron";
 import { ShippingService } from "../services/ShippingService";
+import { logger } from "../utils/logger";
 
 export class DeliveryJob {
   constructor(private shippingService: ShippingService) {}
@@ -8,25 +10,34 @@ export class DeliveryJob {
     // Run every minute to check for deliveries
     cron.schedule("* * * * *", async () => {
       try {
-        console.log("Checking for pending deliveries...");
+        logger.info("⏰ Checking for pending deliveries...");
 
         const pendingDeliveries =
           await this.shippingService.getPendingDeliveries();
 
-        for (const delivery of pendingDeliveries) {
-          console.log(`Processing delivery for order ${delivery.orderId}`);
-          await this.shippingService.markOrderAsDelivered(delivery.orderId);
+        if (pendingDeliveries.length > 0) {
+          logger.info(
+            `📦 Found ${pendingDeliveries.length} pending deliveries to process`
+          );
         }
 
-        if (pendingDeliveries.length > 0) {
-          console.log(`Processed ${pendingDeliveries.length} deliveries`);
+        for (const delivery of pendingDeliveries) {
+          try {
+            logger.info(`🚚 Processing delivery for order ${delivery.orderId}`);
+            await this.shippingService.markOrderAsDelivered(delivery.orderId);
+            logger.info(`✅ Successfully delivered order ${delivery.orderId}`);
+          } catch (error) {
+            logger.error(
+              `❌ Failed to process delivery for order ${delivery.orderId}:`,
+              error
+            );
+          }
         }
       } catch (error) {
-        console.error("Error in delivery job:", error);
+        logger.error("❌ Error in delivery job:", error);
       }
     });
 
-    console.log("Delivery job started - running every minute");
+    logger.info("✅ Delivery job started - running every minute");
   }
 }
-
