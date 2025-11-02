@@ -22,3 +22,6 @@
 /payment-service/node_modules
 /payment-service/.env
 /payment-service/.dockerignore
+/shippment-service/node_modules
+/shippment-service/.env
+/shippment-service/.dockerignore
