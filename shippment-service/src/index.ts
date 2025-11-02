@@ -1,16 +1,18 @@
 import "dotenv/config";
 import express from "express";
 import { StatusCodes } from "http-status-codes";
-// import ShippingRoutes from "./route/user.r";
+import { redisEventConsumer } from "./consumer/redisConsumer";
 import { connectDB } from "./db/connect";
-import { config } from "./utils/config";
 import ErrorHandlerMiddleware from "./middleware/errorHandling.m";
 import RedisService from "./redis/client";
-import { redisEventConsumer } from "./consumer/redisConsumer";
+import ShippingRoutes from "./route/shipping.r";
+import { config } from "./utils/config";
 import { logger } from "./utils/logger";
+import { DeliveryJob } from "./job/deliveryJob";
+import { ShippingService } from "./services/ShippingService";
 
 const app = express();
-const PORT = process.env.PORT || 3003;
+const PORT = process.env.PORT || 3008;
 
 app.use(express.json());
 
@@ -23,12 +25,14 @@ app.get("/api/v1/shipping/health", (req, res) => {
   });
 });
 
-// app.use("/api/v1/shipping", ShipmentRoutes);
+app.use("/api/v1/shipping", ShippingRoutes);
 
 // ERROR HANDLING MIDDLEWARE
 app.use(ErrorHandlerMiddleware);
 
 const redisService = RedisService.getInstance();
+const shippingService = new ShippingService();
+const deliveryJob = new DeliveryJob(shippingService)
 
 const startServer = async () => {
   try {
@@ -48,6 +52,9 @@ const startServer = async () => {
 
     await redisEventConsumer.start();
     logger.info("Redis event consumer started");
+
+    deliveryJob.start();
+    logger.info("Delivery job started");
 
     app.listen(PORT, () => {
       logger.info(`Server running on port ${PORT}`);

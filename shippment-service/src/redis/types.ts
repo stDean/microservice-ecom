@@ -13,6 +13,13 @@ export interface PaymentProcessedEvent extends BaseEvent {
     orderId: string;
     userId: string;
     email: string;
+    shippingAddress: {
+      street: String;
+      city: String;
+      state: String;
+      zipCode: String;
+      country: String;
+    };
   };
 }
 
@@ -22,6 +29,13 @@ export interface ShipProductEvent extends BaseEvent {
     orderId: string;
     userId: string;
     email: string;
+    shippingAddress: {
+      street: String;
+      city: String;
+      state: String;
+      zipCode: String;
+      country: String;
+    };
   };
 }
 

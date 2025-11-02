@@ -5,17 +5,20 @@ import { NotFoundError, BadRequestError } from "../errors";
 
 export const ShippingCtrl = {
   getAll: async (req: Request, res: Response) => {
-    const shipments = await Shipping.find({});
-    res.status(StatusCodes.OK).json({ shipments });
+    const { userId } = req.params;
+    const shipments = await Shipping.find({ userId });
+
+    return res.status(StatusCodes.OK).json({ shipments });
   },
 
   getById: async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const shipment = await Shipping.findById(id);
+    const { orderId } = req.params;
+    const shipment = await Shipping.findOne({ orderId });
     if (!shipment) {
-      throw new NotFoundError(`Shipment with id ${id} not found`);
+      throw new NotFoundError(`Shipment with id ${orderId} not found`);
     }
-    res.status(StatusCodes.OK).json({ shipment });
+
+    return res.status(StatusCodes.OK).json({ shipment });
   },
 
   getByTrackingNumber: async (req: Request, res: Response) => {
@@ -26,6 +29,7 @@ export const ShippingCtrl = {
         `Shipment with tracking number ${trackingNumber} not found`
       );
     }
-    res.status(StatusCodes.OK).json({ shipment });
+    
+    return res.status(StatusCodes.OK).json({ shipment });
   },
 };

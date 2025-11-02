@@ -3,7 +3,11 @@ import db from "../db";
 import { orders, orderStatusHistory } from "../db/schema";
 import { NotFoundError } from "../errors";
 import { eventSubscriber } from "../redis/subscriber";
-import { PaymentProcessedEvent } from "../redis/types";
+import {
+  OrderDeliveredEvent,
+  OrderShippedEvent,
+  PaymentProcessedEvent,
+} from "../redis/types";
 import { logger } from "../utils/logger";
 
 /**
@@ -29,6 +33,14 @@ export class RedisEventConsumer {
       // Subscribe to Redis events
       await eventSubscriber.subscribeToEvent("PAYMENT_PROCESSED", (event) =>
         this.handlePaymentProcessedEvent(event as PaymentProcessedEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("ORDER_DELIVERED", (event) =>
+        this.handleOrderDeliveredEvent(event as OrderDeliveredEvent)
+      );
+
+      await eventSubscriber.subscribeToEvent("ORDER_SHIPPED", (event) =>
+        this.handleOrderShippedEvent(event as OrderShippedEvent)
       );
 
       this.isRunning = true;
@@ -101,6 +113,62 @@ export class RedisEventConsumer {
 
       // You might want to implement retry logic or dead letter queue here
       throw error; // Re-throw if you want the subscriber to handle retries
+    }
+  }
+
+  private async handleOrderShippedEvent(event: OrderShippedEvent) {
+    try {
+      logger.info("📧 Received ORDER_SHIPPED event", {
+        orderId: event.data.orderId,
+        trackingNumber: event.data.trackingNumber,
+      });
+
+      // Process the ORDER_SHIPPED event (e.g., update order status in DB)
+      await db
+        .update(orders)
+        .set({ currentStatus: "SHIPPED" })
+        .where(eq(orders.id, event.data.orderId));
+
+      logger.info("✅ Order marked as shipped", {
+        orderId: event.data.orderId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process ORDER_SHIPPED event:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        eventData: event.data,
+      });
+
+      throw error;
+    }
+  }
+
+  private async handleOrderDeliveredEvent(event: OrderDeliveredEvent) {
+    try {
+      logger.info("📧 Received ORDER_DELIVERED event", {
+        orderId: event.data.orderId,
+        trackingNumber: event.data.trackingNumber,
+      });
+
+      // Process the ORDER_DELIVERED event (e.g., update order status in DB)
+      await db
+        .update(orders)
+        .set({ currentStatus: "DELIVERED" })
+        .where(eq(orders.id, event.data.orderId));
+
+      logger.info("✅ Order marked as delivered", {
+        orderId: event.data.orderId,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error) {
+      logger.error("❌ Failed to process ORDER_DELIVERED event:", {
+        error: error instanceof Error ? error.message : "Unknown error",
+        stack: error instanceof Error ? error.stack : undefined,
+        eventData: event.data,
+      });
+
+      throw error;
     }
   }
 
