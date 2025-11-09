@@ -46,7 +46,7 @@ export class RedisEventConsumer {
 
   private async handleUserDeletedEvent(event: UserDeletedEvent) {
     try {
-      logger.info("📧 Received EMAIL_VERIFIED event", {
+      logger.info("📧 Received USER_DELETED event", {
         userId: event.data.userId,
         email: event.data.email,
       });
@@ -66,7 +66,7 @@ export class RedisEventConsumer {
 
       logger.info("✅ User deleted successfully");
     } catch (error) {
-      logger.error("❌ Failed to process EMAIL_VERIFIED event:", {
+      logger.error("❌ Failed to process USER_DELETED event:", {
         error: error instanceof Error ? error.message : "Unknown error",
         stack: error instanceof Error ? error.stack : undefined,
         eventData: event.data,

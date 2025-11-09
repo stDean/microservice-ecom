@@ -12,6 +12,8 @@ services:
       POSTGRES_DB: auth_db
     volumes:
       - auth_db_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"  # Different external port
 
   # Product Database
   product-db:
@@ -21,6 +23,8 @@ services:
       POSTGRES_DB: product_db
     volumes:
       - product_db_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
 
   # --- API Gateway Development Overrides ---
   api-gateway:
@@ -39,6 +43,7 @@ services:
       - CART_SERVICE_URL=http://cart-service:3005
       - ORDER_SERVICE_URL=http://order-service:3006
       - PAYMENT_SERVICE_URL=http://payment-service:3007
+      - SHIPPING_SERVICE_URL=http://shipping-service:3008
     # Mount volumes for hot-reloading
     volumes:
       - ./api-gateway:/app
@@ -146,6 +151,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: example
     volumes:
       - user_db_data:/data/db
+    ports:
+      - "27017:27017"
 
   product-catalog-service:
     build:
@@ -210,6 +217,8 @@ services:
       POSTGRES_DB: order_db
     volumes:
       - order_db_data:/var/lib/postgresql/data
+    ports:
+      - "5435:5432"
 
   payment-service:
     build:
@@ -238,7 +247,37 @@ services:
       POSTGRES_DB: payment_db
     volumes:
       - payment_db_data:/var/lib/postgresql/data
+    ports:
+      - "5436:5432"
 
+  shipping-service:
+    build:
+      target: builder
+      args:
+        - NODE_ENV=development
+    environment:
+      - PORT=3008
+      - MONGO_USER=root
+      - MONGO_PASSWORD=example
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./shipping-service/src:/app/src:ro
+      - ./shipping-service/package.json:/app/package.json:ro
+      - ./shipping-service/tsconfig.json:/app/tsconfig.json:ro
+      - /app/node_modules
+    command: ["npm", "run", "dev"]
+    depends_on:
+      - shipping-db
+    
+  shipping-db:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - shipping_db_data:/data/db
+    ports:
+      - "27018:27017"
 
 # Define volumes for persistent data
 volumes:
@@ -248,4 +287,5 @@ volumes:
   product_db_data:
   order_db_data:
   payment_db_data:
+  shipping_db_data:
 

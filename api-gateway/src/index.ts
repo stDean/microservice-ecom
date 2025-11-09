@@ -281,7 +281,7 @@ app.use(
  *   "uptime": 3600
  * }
  */
-app.get("/health", async (req: AuthenticatedRequest, res: Response) => {
+app.get("/api/health", async (req: AuthenticatedRequest, res: Response) => {
   const requestId = req.requestId;
 
   logger.info("Health check requested", requestId);

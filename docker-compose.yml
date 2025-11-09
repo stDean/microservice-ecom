@@ -13,8 +13,6 @@ services:
   auth-db:
     image: postgres:15-alpine
     container_name: auth_db
-    ports:
-      - "5433:5432"  # Different external port
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d auth_db"]
       interval: 5s
@@ -27,8 +25,6 @@ services:
   product-db:
     image: postgres:15-alpine
     container_name: product_db
-    ports:
-      - "5434:5432"  # Different external port
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d product_db"]
       interval: 5s
@@ -40,8 +36,6 @@ services:
   order-db:
     image: postgres:15-alpine
     container_name: order_db
-    ports:
-      - "5435:5432"  # Different external port
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d order_db"]
       interval: 5s
@@ -53,8 +47,6 @@ services:
   payment-db:
     image: postgres:15-alpine
     container_name: payment_db
-    ports:
-      - "5436:5432"  # Different external port
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d order_db"]
       interval: 5s
@@ -87,6 +79,15 @@ services:
         condition: service_healthy
       payment-service:
         condition: service_healthy
+      shipping-service:
+        condition: service_healthy
+    # Healthcheck for API Gateway
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3000,path:'/api/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
 
   # Authentication Service
   auth-service:
@@ -299,6 +300,34 @@ services:
     depends_on:
       payment-db: 
         condition: service_healthy
+
+  shipping-service:
+    build:
+      context: ./shipping-service
+    container_name: shipping_service
+    image: shipping_service_image:latest
+    ports:
+      - "3008:3008"
+    environment:
+      - PORT=3008
+    networks:
+      - ecom_network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').request({host:'localhost',port:3008,path:'/api/v1/shipping/health',timeout:2000},(res)=>{if(res.statusCode===200){process.exit(0);}else{process.exit(1);}}).on('error',()=>process.exit(1)).end();"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      shipping-db:
+        condition: service_started
+      redis:
+        condition: service_started
+  
+  shipping-db:
+    image: mongo
+    networks:
+      - ecom_network
 
 # --- 2. Networks ---
 networks:

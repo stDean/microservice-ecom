@@ -37,3 +37,5 @@ export interface OrderCancelled extends BaseEvent {
     }>;
   };
 }
+
+export type ProductType = OrderCancelled | OrderPlaced;

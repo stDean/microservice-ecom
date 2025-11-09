@@ -27,8 +27,9 @@ export class RedisEventConsumer {
 
     try {
       // Subscribe to Redis events
-      await eventSubscriber.subscribeToEvent("EMAIL_VERIFIED", (event) =>
-        this.handleRefundPaymentEvent(event as RefundPaymentEvent)
+      await eventSubscriber.subscribeToEvent(
+        "ORDER_REFUND_REQUESTED",
+        (event) => this.handleRefundPaymentEvent(event as RefundPaymentEvent)
       );
 
       this.isRunning = true;
@@ -50,7 +51,6 @@ export class RedisEventConsumer {
         event.data.paymentTransactionId,
         event.data.amount
       );
-
 
       eventPublisher.publishEvent({
         type: "PAYMENT_REFUNDED",

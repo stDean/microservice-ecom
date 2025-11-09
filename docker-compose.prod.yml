@@ -72,10 +72,10 @@ services:
       args:
         - NODE_ENV=production
     environment:
-      - MONGO_USER=${MONGO_USER}
-      - MONGO_PASSWORD=${MONGO_PASSWORD}
-      - MONGO_IP=${MONGO_IP}
-      - MONGO_PORT=${MONGO_PORT}
+      - MONGO_USER=${USER_MONGO_USER}
+      - MONGO_PASSWORD=${USER_MONGO_PASSWORD}
+      - MONGO_IP=${USER_MONGO_IP}
+      - MONGO_PORT=${USER_MONGO_PORT}
       - NODE_ENV=production
       - REDIS_URL=${REDIS_URL}
     command: ["npm", "run", "start"]
@@ -136,3 +136,17 @@ services:
       - POSTGRES_IP=${PAYMENT_POSTGRES_IP}
       - REDIS_URL=${REDIS_URL}
     command: ["npm", "run", "start"] 
+
+  shipping-service:
+    build: 
+      target: production
+      args:
+        - NODE_ENV=production
+    environment:
+      - MONGO_USER=${SHIPPING_MONGO_USER}
+      - MONGO_PASSWORD=${SHIPPING_MONGO_PASSWORD}
+      - MONGO_IP=${SHIPPING_MONGO_IP}
+      - MONGO_PORT=${SHIPPING_MONGO_PORT}
+      - NODE_ENV=production
+      - REDIS_URL=${REDIS_URL}
+    command: ["npm", "run", "start"]

@@ -20,7 +20,7 @@ app.get("/api/v1/shipping/health", (req, res) => {
   res.status(StatusCodes.OK).send({
     status: "OK",
     timestamp: new Date(),
-    service: "user-service",
+    service: "shipping-service",
     message: `Service is up and running on port ${PORT}`,
   });
 });
@@ -28,26 +28,26 @@ app.get("/api/v1/shipping/health", (req, res) => {
 app.use("/api/v1/shipping", ShippingRoutes);
 
 // ERROR HANDLING MIDDLEWARE
-app.use(ErrorHandlerMiddleware);
+app.use(ErrorHandlerMiddleware); 
 
 const redisService = RedisService.getInstance();
 const shippingService = new ShippingService();
-const deliveryJob = new DeliveryJob(shippingService)
+const deliveryJob = new DeliveryJob(shippingService);
 
 const startServer = async () => {
   try {
     await connectDB(
       `mongodb://${config.MONGO_USER}:${config.MONGO_PASSWORD}@${config.MONGO_IP}:${config.MONGO_PORT}/?authSource=admin`
     );
-    logger.info("✅ User Service Database connected");
+    logger.info("✅ Shipping Service Database connected");
 
     redisService
       .connect()
       .then(() => {
-        logger.info("✅ User Service Redis connected");
+        logger.info("✅ Shipping Service Redis connected");
       })
       .catch((error) => {
-        logger.error("❌ Notification Service Redis connection failed:", error);
+        logger.error("❌ Shipping Service Redis connection failed:", error);
       });
 
     await redisEventConsumer.start();

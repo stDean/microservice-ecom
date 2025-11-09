@@ -1,5 +1,5 @@
 import RedisService from "./client";
-import { OrderCompleted } from "./types";
+import { ProductType } from "./types";
 
 /**
  * @title Event Subscriber Service
@@ -24,7 +24,7 @@ export class EventSubscriber {
    */
   async subscribeToEvent(
     eventType: string,
-    handler: (event: OrderCompleted) => void
+    handler: (event: ProductType) => void
   ): Promise<void> {
     await this.redis.subscribe(eventType, handler);
     console.log(`👂 Subscribed to event: ${eventType}`);

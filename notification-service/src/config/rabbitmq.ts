@@ -1,6 +1,7 @@
 // config/rabbitmq.ts
 import amqp from "amqplib";
 import { logger } from "./logger";
+import { assert } from "zod/v4/core/util.cjs";
 
 /**
  * RabbitMQService - A service class for handling RabbitMQ message queue operations
@@ -72,6 +73,9 @@ class RabbitMQService {
       // Declare queues
       await this.channel.assertQueue("email_verification", { durable: true });
       await this.channel.assertQueue("password_reset", { durable: true });
+      await this.channel.assertQueue("order_emails", { durable: true });
+      await this.channel.assertQueue("payment_emails", { durable: true });
+      await this.channel.assertQueue("shipping_emails", { durable: true });
 
       // Bind queues to exchange
       await this.channel.bindQueue(
@@ -83,6 +87,21 @@ class RabbitMQService {
         "password_reset",
         "notifications",
         "password_reset"
+      );
+      await this.channel.bindQueue(
+        "order_emails",
+        "notifications",
+        "order_emails"
+      );
+      await this.channel.bindQueue(
+        "payment_emails",
+        "notifications",
+        "payment_emails"
+      );
+      await this.channel.bindQueue(
+        "shipping_emails",
+        "notifications",
+        "shipping_emails"
       );
 
       logger.info("Connected to RabbitMQ successfully");
